@@ -13,6 +13,8 @@
 #include <unistd.h>
 #endif
 
+namespace vulkan_helper {
+
 class spirv_file {
 public:
     spirv_file(std::filesystem::path path) {
@@ -67,3 +69,4 @@ private:
     size_t m_size; // count of byte
 #endif
 };
+}

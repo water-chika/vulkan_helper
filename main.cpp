@@ -123,7 +123,7 @@ class app_pipeline : public vulkan_helper::pipeline<D> {
 public:
     app_pipeline() : vulkan_helper::pipeline<D>{
         [](D& device) {
-            return vulkan_helper::shader_module<D>{device, spirv_file{ "comp.spv" }};
+            return vulkan_helper::shader_module<D>{device, vulkan_helper::spirv_file{ "comp.spv" }};
         }
     }
     {}
