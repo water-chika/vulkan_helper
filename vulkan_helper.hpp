@@ -1,10 +1,87 @@
 #pragma once
 
-#include <vulkan/vulkan.h>
+#include <vulkan/vulkan.hpp>
 
 #include "spirv_helper.hpp"
 
 #include <concepts>
+
+namespace vulkan_hpp_helper {
+    namespace concept_helper {
+        template<class Instance>
+        concept instance = requires (Instance instance) {
+            { instance.get_instance() }->std::convertible_to<vk::Instance>;
+        };
+        namespace instance_helper {
+            template<class T>
+            concept get_extensions = requires(T t) {
+                t.get_extensions();
+            };
+        }
+        template<class T>
+        concept physical_device = requires (T t) {
+            { t.get_physical_device() } -> std::convertible_to<vk::PhysicalDevice>;
+        };
+        template<class T>
+        concept device = requires (T t) {
+            { t.get_device() } -> std::convertible_to<vk::Device>;
+        };
+    }
+
+    template<concept_helper::instance_helper::get_extensions T>
+    class add_instance : public T {
+    public:
+        using parent = T;
+        add_instance() {
+            auto app_info = vk::ApplicationInfo{}.setApiVersion(vk::ApiVersion13);
+            auto exts = parent::get_extensions();
+            auto create_info = vk::InstanceCreateInfo{}.setPApplicationInfo(&app_info).setPEnabledExtensionNames(exts);
+            m_instance = vk::createInstance(create_info);
+        }
+        ~add_instance() {
+            m_instance.destroy();
+        }
+        auto get_instance() {
+            return m_instance;
+        }
+    private:
+        vk::Instance m_instance;
+    };
+
+    template<concept_helper::instance instance>
+    class add_first_physical_device : public instance {
+    public:
+        using parent = instance;
+        add_first_physical_device() : instance{}
+        {
+            m_physical_device = parent::get_instance().enumeratePhysicalDevices()[0];
+        }
+        auto get_physical_device() {
+            return m_physical_device;
+        }
+    private:
+        vk::PhysicalDevice m_physical_device;
+    };
+
+    template<concept_helper::device Device>
+    class add_fence : public Device {
+    public:
+        using parent = Device;
+        add_fence() : Device{} {
+            vk::Device device = parent::get_device();
+            device.createFence(vk::FenceCreateInfo{});
+        }
+        ~add_fence() {
+            vk::Device device = parent::get_device();
+            device.destroyFence(m_fence);
+        }
+        auto get_fence() {
+            return m_fence;
+        }
+    private:
+        vk::Fence m_fence;
+    };
+}
 
 namespace vulkan_helper {
     namespace concept_helper {
@@ -16,6 +93,12 @@ namespace vulkan_helper {
         concept instance_help_functions = requires (Instance instance) {
             instance.get_first_physical_device();
         };
+        namespace instance_helper {
+            template<class T>
+            concept get_extensions = requires(T t) {
+                t.get_extensions();
+            };
+        }
         template<class PhysicalDevice>
         concept physical_device = requires (PhysicalDevice physical_device) {
             physical_device.get_vulkan_physical_device();
@@ -25,6 +108,9 @@ namespace vulkan_helper {
             device.get_vulkan_device();
         };
     }
+
+    class empty_class {};
+
     template<concept_helper::instance instance>
     class add_instance_function_wrapper : public instance {
     public:
@@ -59,9 +145,13 @@ namespace vulkan_helper {
             }
         }
     };
-	class instance {
+
+    template<class T>
+    requires concept_helper::instance_helper::get_extensions<T>
+	class instance : public T{
     public:
-        instance() {
+        using parent = T;
+        instance() : T{} {
             VkApplicationInfo application_info{};
             {
                 auto& info = application_info;
@@ -71,6 +161,9 @@ namespace vulkan_helper {
             VkInstanceCreateInfo create_info{};
             create_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
             create_info.pApplicationInfo = &application_info;
+            auto exts = parent::get_extensions();
+            create_info.enabledExtensionCount = exts.size();
+            create_info.ppEnabledExtensionNames = exts.data();
             auto res = vkCreateInstance(&create_info, NULL, &m_instance);
             if (res != VK_SUCCESS) {
                 throw std::runtime_error("failed to create instance");
@@ -86,6 +179,14 @@ namespace vulkan_helper {
     private:
         VkInstance m_instance;
 	};
+
+    template<class T>
+    class add_empty_extensions : public T {
+    public:
+        auto get_extensions() {
+            return std::vector<const char*>{};
+        }
+    };
 
     template<class T>
     class info_chain {
@@ -199,6 +300,21 @@ namespace vulkan_helper {
             return physical_device::get_vulkan_physical_device();
         }
     };
+
+    uint32_t findProperties(VkPhysicalDeviceMemoryProperties memory_properties, uint32_t memoryTypeBitsRequirements, VkMemoryPropertyFlags requiredProperty) {
+        const uint32_t memoryCount = memory_properties.memoryTypeCount;
+        for (uint32_t memoryIndex = 0; memoryIndex < memoryCount; memoryIndex++) {
+            const uint32_t memoryTypeBits = (1 << memoryIndex);
+            const bool isRequiredMemoryType = memoryTypeBitsRequirements & memoryTypeBits;
+            const VkMemoryPropertyFlags properties =
+                memory_properties.memoryTypes[memoryIndex].propertyFlags;
+            const bool hasRequiredProperties =
+                (properties & requiredProperty) == requiredProperty;
+            if (isRequiredMemoryType && hasRequiredProperties)
+                return memoryIndex;
+        }
+        throw std::runtime_error{ "failed find memory property" };
+    }
 
     template<concept_helper::device device>
     class add_device_wrapper_functions : public device {
@@ -341,20 +457,7 @@ namespace vulkan_helper {
             vkDestroyBuffer(device::get_vulkan_device(), buffer, NULL);
         }
 
-        uint32_t findProperties(VkPhysicalDeviceMemoryProperties memory_properties, uint32_t memoryTypeBitsRequirements, VkMemoryPropertyFlags requiredProperty) {
-            const uint32_t memoryCount = memory_properties.memoryTypeCount;
-            for (uint32_t memoryIndex = 0; memoryIndex < memoryCount; memoryIndex++) {
-                const uint32_t memoryTypeBits = (1 << memoryIndex);
-                const bool isRequiredMemoryType = memoryTypeBitsRequirements & memoryTypeBits;
-                const VkMemoryPropertyFlags properties =
-                    memory_properties.memoryTypes[memoryIndex].propertyFlags;
-                const bool hasRequiredProperties =
-                    (properties & requiredProperty) == requiredProperty;
-                if (isRequiredMemoryType && hasRequiredProperties)
-                    return memoryIndex;
-            }
-            throw std::runtime_error{ "failed find memory property" };
-        }
+
         VkDeviceMemory alloc_device_memory(VkPhysicalDeviceMemoryProperties memory_properties, VkBuffer buffer, VkMemoryPropertyFlags property) {
             VkMemoryRequirements requirements;
             vkGetBufferMemoryRequirements(device::get_vulkan_device(), buffer, &requirements);
@@ -485,6 +588,7 @@ namespace vulkan_helper {
             vkDestroyImageView(device::get_vulkan_device(), view, nullptr);
         }
     };
+
     template<concept_helper::physical_device physical_device>
     class device : public physical_device {
     public:
@@ -667,7 +771,7 @@ namespace vulkan_helper {
     template<class D>
     class add_storage_buffer : public D {
     public:
-        add_storage_buffer() : m_storage_buffer{ D::create_buffer(D::get_compute_queue_family_index(), D::get_storage_buffer_size(), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT)}
+        add_storage_buffer() : m_storage_buffer{ D::create_buffer(D::get_queue_family_index(), D::get_storage_buffer_size(), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT)}
         {}
         ~add_storage_buffer() {
             D::destroy_buffer(m_storage_buffer);
