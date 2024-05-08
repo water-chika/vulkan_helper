@@ -27,7 +27,7 @@ namespace vulkan_hpp_helper {
             { t.get_device() } -> std::convertible_to<vk::Device>;
         };
     }
-
+    class empty_class {};
     template<concept_helper::instance_helper::get_extensions T>
     class add_instance : public T {
     public:
@@ -47,7 +47,40 @@ namespace vulkan_hpp_helper {
     private:
         vk::Instance m_instance;
     };
-
+    template<class T>
+    class add_empty_extensions : public T {
+    public:
+        auto get_extensions() {
+            return std::vector<const char*>{};
+        }
+    };
+    template<class T>
+    class add_surface_extension : public T {
+    public:
+        auto get_extensions() {
+            auto ext = T::get_extensions();
+            ext.push_back(vk::KHRSurfaceExtensionName);
+            return ext;
+        }
+    };
+    template<class T>
+    class add_win32_surface_extension : public T {
+    public:
+        auto get_extensions() {
+            auto ext = T::get_extensions();
+            ext.push_back(vk::KHRWin32SurfaceExtensionName);
+            return ext;
+        }
+    };
+    template<class T>
+    class add_swapchain_extension : public T {
+    public:
+        auto get_extensions() {
+            auto ext = T::get_extensions();
+            ext.push_back(vk::KHRSwapchainExtensionName);
+            return ext;
+        }
+    };
     template<concept_helper::instance instance>
     class add_first_physical_device : public instance {
     public:
