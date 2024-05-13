@@ -486,14 +486,7 @@ namespace vulkan_hpp_helper {
 	private:
 		std::vector<vk::Image> m_images;
 	};
-	template<class T>
-	class rename_images : public T {
-	public:
-		using parent = T;
-		auto get_intermediate_images() {
-			return parent::get_images();
-		}
-	};
+
 	template<class T>
 	class add_image_memory : public T {
 	public:
