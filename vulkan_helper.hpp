@@ -1576,20 +1576,29 @@ namespace vulkan_hpp_helper {
 			.setPatchControlPoints(Count);
 		}
 	};
+	template<class T>
+	class add_pipeline_stage_to_stages : pulbic T {
+	public:
+		using parent = T;
+		auto get_pipeline_stages() {
+			auto stages = parent::get_pipeline_stages();
+			auto stage = parent::get_pipeline_stage();
+			stages.emplace_back(stage);
+			return stages;
+		}
+	};
 	template< class T>
 	class add_pipeline_stage : public T {
 	public:
 		using parent = T;
 		auto get_pipeline_stages() {
-			auto stages = parent::get_pipeline_stages();
 			vk::ShaderModule shader_module = parent::get_shader_module();
 			m_entry_name = parent::get_shader_entry_name();
 			vk::ShaderStageFlagBits stage = parent::get_shader_stage();
-			stages.emplace_back(vk::PipelineShaderStageCreateInfo{}
+			return vk::PipelineShaderStageCreateInfo{}
 				.setModule(shader_module)
 				.setPName(m_entry_name.data())
-				.setStage(stage));
-			return stages;
+				.setStage(stage);
 		}
 	private:
 		std::string m_entry_name;
