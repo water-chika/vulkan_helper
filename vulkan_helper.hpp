@@ -856,53 +856,59 @@ namespace vulkan_hpp_helper {
 		}
 	};
 	template<class T>
-	class add_vertex_buffer_memory :
+	class add_buffer_memory_with_data_copy :
 		public
 		copy_buffer_data<
-		rename_vertex_buffer_data_to_buffer_data<
 		add_buffer_memory<
-		rename_vertex_buffer_to_buffer<
 		set_buffer_memory_properties<
-		T>>>>>
+		T>>>
 	{
 	};
-	template<class T>
-	class add_vertex_buffer_data : public T {
-	public:
-		auto get_vertex_buffer_size() {
-			return m_data.size() * sizeof(m_data[0]);
-		}
-		auto get_vertex_buffer_data() {
-			return m_data;
-		}
-	private:
-		static constexpr auto m_data = std::array{
-			-0.5f, -0.5f,
-						0.0f, 0.0f,
-			0.5f, -0.5f,
 
-		};
+	template<vk::BufferUsageFlagBits Usage, class T>
+	class set_buffer_usage : public T {
+	public:
+		auto get_buffer_usage() {
+			return Usage;
+		}
 	};
 	template<class T>
-	class add_vertex_buffer : public T {
+	class rename_buffer_to_index_buffer : public T {
 	public:
 		using parent = T;
-		add_vertex_buffer() {
+		auto get_index_buffer() {
+			return parent::get_buffer();
+		}
+	};
+	template<class T>
+	class rename_buffer_to_vertex_buffer : public T {
+	public:
+		using parent = T;
+		auto get_vertex_buffer() {
+			return parent::get_buffer();
+		}
+	};
+	template<class T>
+	class add_buffer : public T {
+	public:
+		using parent = T;
+		add_buffer() {
 			vk::Device device = parent::get_device();
 			uint32_t queue_family_index = parent::get_queue_family_index();
-			vk::DeviceSize size = parent::get_vertex_buffer_size();
+			vk::DeviceSize size = parent::get_buffer_size();
+			auto usage = parent::get_buffer_usage();
 			m_buffer = device.createBuffer(
 				vk::BufferCreateInfo{}
 				.setQueueFamilyIndices(queue_family_index)
 				.setSize(size)
-				.setUsage(vk::BufferUsageFlagBits::eVertexBuffer)
+				.setUsage(usage)
 			);
 		}
-		~add_vertex_buffer() {
+		~add_buffer() {
 			vk::Device device = parent::get_device();
 			device.destroyBuffer(m_buffer);
 		}
-		auto get_vertex_buffer() {
+		auto get_buffer() {
 			return m_buffer;
 		}
 	private:
@@ -1499,18 +1505,26 @@ namespace vulkan_hpp_helper {
 		std::vector<vk::VertexInputAttributeDescription> m_attribute_descriptions;
 		std::vector<vk::VertexInputBindingDescription> m_binding_descriptions;
 	};
+	template<vk::Format Format, class T>
+	class set_vertex_input_attribute_format : public T {
+	public:
+		auto get_vertex_input_attribute_format() {
+			return Format;
+		}
+	};
 	template<class T>
 	class add_vertex_attribute_description : public T {
 	public:
 		using parent = T;
 		auto get_vertex_attribute_descriptions() {
 			auto descs = parent::get_vertex_attribute_descriptions();
+			auto format = parent::get_vertex_input_attribute_format();
 			descs.emplace_back(
 				vk::VertexInputAttributeDescription{}
 				.setLocation(0)
 				.setBinding(0)
 				.setOffset(0)
-				.setFormat(vk::Format::eR32G32Sfloat)
+				.setFormat(format)
 			);
 			return descs;
 		}
@@ -1577,7 +1591,7 @@ namespace vulkan_hpp_helper {
 		}
 	};
 	template<class T>
-	class add_pipeline_stage_to_stages : pulbic T {
+	class add_pipeline_stage_to_stages : public T {
 	public:
 		using parent = T;
 		auto get_pipeline_stages() {
@@ -1591,7 +1605,7 @@ namespace vulkan_hpp_helper {
 	class add_pipeline_stage : public T {
 	public:
 		using parent = T;
-		auto get_pipeline_stages() {
+		auto get_pipeline_stage() {
 			vk::ShaderModule shader_module = parent::get_shader_module();
 			m_entry_name = parent::get_shader_entry_name();
 			vk::ShaderStageFlagBits stage = parent::get_shader_stage();
