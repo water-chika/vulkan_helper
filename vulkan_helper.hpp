@@ -1738,7 +1738,7 @@ namespace vulkan_hpp_helper {
 		add_file() {
 			auto path = parent::get_file_path();
 			m_file = CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-			if (m_file == NULL) {
+			if (m_file == INVALID_HANDLE_VALUE) {
 				throw std::runtime_error{ "failed to create file" };
 			}
 		}
