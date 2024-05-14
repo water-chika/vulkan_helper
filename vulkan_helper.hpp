@@ -826,12 +826,12 @@ namespace vulkan_hpp_helper {
 			return parent::get_vertex_buffer();
 		}
 	};
-	template<class T>
+	template<vk::MemoryPropertyFlagBits Property, class T>
 	class set_buffer_memory_properties : public T {
 	public:
 		using parent = T;
 		auto get_buffer_memory_properties() {
-			return vk::MemoryPropertyFlagBits::eHostVisible;
+			return Property;
 		}
 	};
 	template<class T>
@@ -860,16 +860,38 @@ namespace vulkan_hpp_helper {
 		public
 		copy_buffer_data<
 		add_buffer_memory<
-		set_buffer_memory_properties<
+		set_buffer_memory_properties<vk::MemoryPropertyFlagBits::eHostVisible,
 		T>>>
 	{
 	};
-
+	template<vk::BufferUsageFlagBits Usage, class T>
+	class add_buffer_usage : public T {
+	public:
+		using parent = T;
+		auto get_buffer_usage() {
+			return parent::get_buffer_usage() | Usage;
+		}
+	};
+	template<class T>
+	class empty_buffer_usage : public T {
+	public:
+		auto get_buffer_usage() {
+			return vk::BufferUsageFlags{};
+		}
+	};
 	template<vk::BufferUsageFlagBits Usage, class T>
 	class set_buffer_usage : public T {
 	public:
 		auto get_buffer_usage() {
 			return Usage;
+		}
+	};
+	template<class T>
+	class rename_buffer_to_storage_buffer : public T {
+	public:
+		using parent = T;
+		auto get_storage_buffer() {
+			return parent::get_buffer();
 		}
 	};
 	template<class T>
@@ -886,6 +908,13 @@ namespace vulkan_hpp_helper {
 		using parent = T;
 		auto get_vertex_buffer() {
 			return parent::get_buffer();
+		}
+	};
+	template<vk::DeviceSize Size, class T>
+	class set_buffer_size : public T {
+	public:
+		auto get_buffer_size() {
+			return Size;
 		}
 	};
 	template<class T>
@@ -1859,11 +1888,11 @@ namespace vulkan_hpp_helper {
 		using parent = T;
 		add_pipeline_layout() {
 			vk::Device device = parent::get_device();
-			//auto set_layouts = parent::get_descriptor_set_layouts();
+			auto set_layouts = parent::get_descriptor_set_layouts();
 
 			m_layout = device.createPipelineLayout(
 				vk::PipelineLayoutCreateInfo{}
-				//.setSetLayouts(set_layouts)
+				.setSetLayouts(set_layouts)
 			);
 		}
 		~add_pipeline_layout() {
@@ -1877,13 +1906,21 @@ namespace vulkan_hpp_helper {
 		vk::PipelineLayout m_layout;
 	};
 	template<class T>
+	class add_single_descriptor_set_layout : public T {
+	public:
+		using parent = T;
+		auto get_descriptor_set_layouts() {
+			return parent::get_descriptor_set_layout();
+		}
+	};
+	template<class T>
 	class add_descriptor_set_layout : public T {
 	public:
 		using parent = T;
 		add_descriptor_set_layout() {
 			vk::Device device = parent::get_device();
 			auto bindings = parent::get_descriptor_set_layout_bindings();
-			device.createDescriptorSetLayout(
+			m_layout = device.createDescriptorSetLayout(
 				vk::DescriptorSetLayoutCreateInfo{}
 				.setBindings(bindings)
 			);
@@ -1891,6 +1928,9 @@ namespace vulkan_hpp_helper {
 		~add_descriptor_set_layout() {
 			vk::Device device = parent::get_device();
 			device.destroyDescriptorSetLayout(m_layout);
+		}
+		auto get_descriptor_set_layout() {
+			return m_layout;
 		}
 	private:
 		vk::DescriptorSetLayout m_layout;
