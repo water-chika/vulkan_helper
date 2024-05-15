@@ -517,6 +517,105 @@ namespace vulkan_hpp_helper {
 		vk::DeviceMemory m_memory;
 	};
 	template<class T>
+	class add_buffer_memory_create : public T {
+	public:
+		using parent = T;
+		auto create() {
+			vk::Device device = parent::get_device();
+			vk::Buffer buffer = parent::get_buffer();
+			vk::MemoryPropertyFlags memory_properties = parent::get_buffer_memory_properties();
+
+			auto memory_requirements =
+				device.getBufferMemoryRequirements(
+					buffer
+				);
+			uint32_t memory_type_index = parent::find_properties(memory_requirements.memoryTypeBits, memory_properties);
+			auto memory = device.allocateMemory(
+				vk::MemoryAllocateInfo{}
+				.setAllocationSize(memory_requirements.size)
+				.setMemoryTypeIndex(memory_type_index)
+			);
+			device.bindBufferMemory(buffer, memory, 0);
+			return memory;
+		}
+	};
+	template<class T>
+	class map_buffer_memory_vector : public T {
+	public:
+		using parent = T;
+		map_buffer_memory_vector() {
+			vk::Device device = parent::get_device();
+			std::vector<vk::DeviceMemory> memory_vector = parent::get_buffer_memory_vector();
+			m_ptrs.resize(memory_vector.size());
+			std::ranges::transform(
+				memory_vector,
+				m_ptrs.begin(),
+				[device](auto& memory) {
+					return device.mapMemory(memory, 0, vk::WholeSize);
+				}
+			);
+		}
+		~map_buffer_memory_vector() {
+			vk::Device device = parent::get_device();
+			std::vector<vk::DeviceMemory> memory_vector = parent::get_buffer_memory_vector();
+			std::ranges::for_each(
+				memory_vector,
+				[device](auto& memory) {
+					device.unmapMemory(memory);
+				}
+			);
+		}
+		auto get_buffer_memory_ptr_vector() {
+			return m_ptrs;
+		}
+	private:
+		std::vector<void*> m_ptrs;
+	};
+	template<class T>
+	class add_buffer_memory_vector : public T {
+	public:
+		using parent = T;
+		add_buffer_memory_vector() {
+			vk::Device device = parent::get_device();
+			std::vector<vk::Buffer> buffers = parent::get_vector();
+			vk::MemoryPropertyFlags memory_properties = parent::get_buffer_memory_properties();
+
+			auto memory_requirements =
+				device.getBufferMemoryRequirements(
+					buffers[0]
+				);
+			uint32_t memory_type_index = parent::find_properties(memory_requirements.memoryTypeBits, memory_properties);
+			m_memory.resize(buffers.size());
+			std::ranges::transform(
+				buffers,
+				m_memory.begin(),
+				[device, memory_type_index, memory_requirements, buffers](auto& buffer) {
+					auto memory = device.allocateMemory(
+						vk::MemoryAllocateInfo{}
+						.setAllocationSize(memory_requirements.size)
+						.setMemoryTypeIndex(memory_type_index)
+					);
+					device.bindBufferMemory(buffer, memory, 0);
+					return memory;
+				}
+			);
+		}
+		~add_buffer_memory_vector() {
+			vk::Device device = parent::get_device();
+			std::ranges::for_each(
+				m_memory,
+				[device](auto& memory) {
+					device.freeMemory(memory);
+				}
+			);
+		}
+		auto get_buffer_memory_vector() {
+			return m_memory;
+		}
+	private:
+		std::vector<vk::DeviceMemory> m_memory;
+	};
+	template<class T>
 	class add_buffer_memory : public T {
 	public:
 		using parent = T;
@@ -887,11 +986,35 @@ namespace vulkan_hpp_helper {
 		}
 	};
 	template<class T>
-	class rename_buffer_to_storage_buffer : public T {
+	class rename_buffer_vector_to_uniform_buffer_vector : public T {
 	public:
 		using parent = T;
-		auto get_storage_buffer() {
-			return parent::get_buffer();
+		auto get_uniform_buffer_vector() {
+			return parent::get_buffer_vector();
+		}
+	};
+	template<class T>
+	class rename_buffer_vector_to_uniform_upload_buffer_vector : public T {
+	public:
+		using parent = T;
+		auto get_uniform_upload_buffer_vector() {
+			return parent::get_buffer_vector();
+		}
+	};
+	template<class T>
+	class rename_buffer_memory_vector_to_uniform_upload_buffer_memory_vector : public T {
+	public:
+		using parent = T;
+		auto get_uniform_upload_buffer_memory_vector() {
+			return parent::get_buffer_memory_vector();
+		}
+	};
+	template<class T>
+	class rename_buffer_memory_ptr_vector_to_uniform_upload_buffer_memory_ptr_vector : public T {
+	public:
+		using parent = T;
+		auto get_uniform_upload_buffer_memory_ptr_vector() {
+			return parent::get_buffer_memory_ptr_vector();
 		}
 	};
 	template<class T>
@@ -917,31 +1040,93 @@ namespace vulkan_hpp_helper {
 			return Size;
 		}
 	};
+
 	template<class T>
-	class add_buffer : public T {
+	class add_buffer_create : public T {
 	public:
 		using parent = T;
-		add_buffer() {
+		using create_type = vk::Buffer;
+		auto create() {
 			vk::Device device = parent::get_device();
 			uint32_t queue_family_index = parent::get_queue_family_index();
 			vk::DeviceSize size = parent::get_buffer_size();
 			auto usage = parent::get_buffer_usage();
-			m_buffer = device.createBuffer(
+			return device.createBuffer(
 				vk::BufferCreateInfo{}
 				.setQueueFamilyIndices(queue_family_index)
 				.setSize(size)
 				.setUsage(usage)
 			);
 		}
-		~add_buffer() {
+	};
+	template<class T>
+	class add_buffer_destroy : public T {
+	public:
+		using parent = T;
+		auto destroy(vk::Buffer buffer) {
 			vk::Device device = parent::get_device();
-			device.destroyBuffer(m_buffer);
+			device.destroyBuffer(buffer);
+		}
+	};
+	template<class T>
+	class add_buffer_create_destroy
+		: public
+		add_buffer_destroy<add_buffer_create<T>>
+	{};
+	template<class T>
+	class add_buffer_as_member : public add_buffer_create_destroy<T> {
+	public:
+		using parent = add_buffer_create_destroy<T>;
+		add_buffer_as_member() {
+			m_buffer = parent::create();
+		}
+		~add_buffer_as_member() {
+			parent::destroy(m_buffer);
 		}
 		auto get_buffer() {
 			return m_buffer;
 		}
 	private:
 		vk::Buffer m_buffer;
+	};
+	template<class T>
+	class add_vector_for : public T {
+	public:
+		using parent = T;
+		add_vector_for() {
+			uint32_t count = parent::get_vector_size();
+			m_members.resize(count);
+			std::ranges::for_each(
+				m_members,
+				[this](auto& member) {
+					member = parent::create();
+				}
+			);
+		}
+		~add_vector_for() {
+			std::ranges::for_each(
+				m_members,
+				[this](auto& member) {
+					parent::destroy(member);
+				}
+			);
+		}
+		auto get_vector() {
+			return m_members;
+		}
+	private:
+		std::vector<typename parent::create_type> m_members;
+	};
+	template<class T>
+	class add_buffer_vector
+		:
+		public add_vector_for<add_buffer_create_destroy<T>>
+	{
+	public:
+		using parent = add_vector_for<add_buffer_create_destroy<T>>;
+		auto get_buffer_vector() {
+			return parent::get_vector();
+		}
 	};
 	template<class T>
 	class jump_draw_if_window_minimized : public T {
@@ -952,6 +1137,100 @@ namespace vulkan_hpp_helper {
 				parent::draw();
 			}
 		}
+	};
+	template<class T>
+	class add_dynamic_draw : public T {
+	public:
+		using parent = T;
+		void draw() {
+			vk::Device device = parent::get_device();
+			vk::SwapchainKHR swapchain = parent::get_swapchain();
+			vk::Queue queue = parent::get_queue();
+			vk::Semaphore acquire_image_semaphore = parent::get_acquire_next_image_semaphore();
+			bool need_recreate_surface = false;
+
+
+			auto [res, index] = device.acquireNextImage2KHR(
+				vk::AcquireNextImageInfoKHR{}
+				.setSwapchain(swapchain)
+				.setSemaphore(acquire_image_semaphore)
+				.setTimeout(UINT64_MAX)
+				.setDeviceMask(1)
+			);
+			if (res == vk::Result::eSuboptimalKHR) {
+				need_recreate_surface = true;
+			}
+			else if (res != vk::Result::eSuccess) {
+				throw std::runtime_error{ "acquire next image != success" };
+			}
+			parent::free_acquire_next_image_semaphore(index);
+
+			vk::Fence acquire_next_image_semaphore_fence = parent::get_acquire_next_image_semaphore_fence(index);
+			{
+				vk::Result res = device.waitForFences(acquire_next_image_semaphore_fence, true, UINT64_MAX);
+				if (res != vk::Result::eSuccess) {
+					throw std::runtime_error{ "failed to wait fences" };
+				}
+			}
+			device.resetFences(acquire_next_image_semaphore_fence);
+
+			std::vector<void*> upload_memory_ptrs = parent::get_uniform_upload_buffer_memory_ptr_vector();
+			void* upload_ptr = upload_memory_ptrs[index];
+			memcpy(upload_ptr, &m_frame_index, sizeof(m_frame_index));
+			m_frame_index++;
+			std::vector<vk::DeviceMemory> upload_memory_vector = parent::get_uniform_upload_buffer_memory_vector();
+			vk::DeviceMemory upload_memory = upload_memory_vector[index];
+			device.flushMappedMemoryRanges(
+				vk::MappedMemoryRange{}
+				.setMemory(upload_memory)
+				.setOffset(0)
+				.setSize(vk::WholeSize)
+			);
+
+			vk::Semaphore draw_image_semaphore = parent::get_draw_image_semaphore(index);
+			vk::CommandBuffer buffer = parent::get_swapchain_command_buffer(index);
+			vk::PipelineStageFlags wait_stage_mask{ vk::PipelineStageFlagBits::eTopOfPipe };
+			queue.submit(
+				vk::SubmitInfo{}
+				.setCommandBuffers(buffer)
+				.setWaitSemaphores(
+					acquire_image_semaphore
+				)
+				.setWaitDstStageMask(wait_stage_mask)
+				.setSignalSemaphores(
+					draw_image_semaphore
+				),
+				acquire_next_image_semaphore_fence
+			);
+			try {
+				auto res = queue.presentKHR(
+					vk::PresentInfoKHR{}
+					.setImageIndices(index)
+					.setSwapchains(swapchain)
+					.setWaitSemaphores(draw_image_semaphore)
+				);
+				if (res == vk::Result::eSuboptimalKHR) {
+					need_recreate_surface = true;
+				}
+				else if (res != vk::Result::eSuccess) {
+					throw std::runtime_error{ "present return != success" };
+				}
+			}
+			catch (vk::OutOfDateKHRError e) {
+				need_recreate_surface = true;
+			}
+			if (need_recreate_surface) {
+				queue.waitIdle();
+				parent::recreate_surface();
+			}
+		}
+		~add_dynamic_draw() {
+			vk::Device device = parent::get_device();
+			vk::Queue queue = parent::get_queue();
+			queue.waitIdle();
+		}
+	private:
+		uint64_t m_frame_index=0;
 	};
 	template<class T>
 	class add_draw : public T {
@@ -1832,6 +2111,16 @@ namespace vulkan_hpp_helper {
 	public:
 		auto get_pipeline_dynamic_state_create_info() {
 			return vk::PipelineDynamicStateCreateInfo{};
+		}
+	};
+	template<class T>
+	class enable_pipeline_depth_test : public T {
+	public:
+		auto get_pipeline_depth_stencil_state_create_info() {
+			return vk::PipelineDepthStencilStateCreateInfo{}
+				.setDepthTestEnable(true)
+				.setDepthCompareOp(vk::CompareOp::eLessOrEqual)
+				.setDepthWriteEnable(true);
 		}
 	};
 	template<class T>
