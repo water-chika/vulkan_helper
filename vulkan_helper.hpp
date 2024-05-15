@@ -269,6 +269,64 @@ namespace vulkan_hpp_helper {
 		}
 	};
 	template<class T>
+	class add_images_views : public T {
+	public:
+		using parent = T;
+		add_images_views() {
+			create();
+		}
+		~add_images_views() {
+			destroy();
+		}
+		void create() {
+			vk::Device device = parent::get_device();
+			auto images = parent::get_images();
+			vk::Format format = parent::get_image_format();
+
+			m_views.resize(images.size());
+			std::ranges::transform(
+				images,
+				m_views.begin(),
+				[device, format](auto image) {
+					return device.createImageView(
+						vk::ImageViewCreateInfo{}
+						.setImage(image)
+						.setFormat(format)
+						.setSubresourceRange(
+							vk::ImageSubresourceRange{}
+							.setAspectMask(vk::ImageAspectFlagBits::eColor)
+							.setLayerCount(1)
+							.setLevelCount(1)
+						)
+						.setViewType(vk::ImageViewType::e2D)
+					);
+				}
+			);
+		}
+		void destroy() {
+			vk::Device device = parent::get_device();
+			std::ranges::for_each(
+				m_views,
+				[device](auto view) {
+					device.destroyImageView(view);
+				}
+			);
+		}
+		auto get_images_views() {
+			return m_views;
+		}
+	private:
+		std::vector<vk::ImageView> m_views;
+	};
+	template<class T>
+	class rename_images_views_to_depth_images_views : public T {
+	public:
+		using parent = T;
+		auto get_depth_images_views() {
+			return parent::get_images_views();
+		}
+	};
+	template<class T>
 	class add_swapchain_images_views : public T {
 	public:
 		using parent = T;
@@ -362,6 +420,14 @@ namespace vulkan_hpp_helper {
 		using parent = T;
 		auto get_image_count() {
 			return parent::get_swapchain_images().size();
+		}
+	};
+	template<class T>
+	class rename_image_format_to_depth_image_format : public T {
+	public:
+		using parent = T;
+		auto get_depth_image_format() {
+			return parent::get_image_format();
 		}
 	};
 	template<vk::Format f, class T>
@@ -1138,100 +1204,7 @@ namespace vulkan_hpp_helper {
 			}
 		}
 	};
-	template<class T>
-	class add_dynamic_draw : public T {
-	public:
-		using parent = T;
-		void draw() {
-			vk::Device device = parent::get_device();
-			vk::SwapchainKHR swapchain = parent::get_swapchain();
-			vk::Queue queue = parent::get_queue();
-			vk::Semaphore acquire_image_semaphore = parent::get_acquire_next_image_semaphore();
-			bool need_recreate_surface = false;
-
-
-			auto [res, index] = device.acquireNextImage2KHR(
-				vk::AcquireNextImageInfoKHR{}
-				.setSwapchain(swapchain)
-				.setSemaphore(acquire_image_semaphore)
-				.setTimeout(UINT64_MAX)
-				.setDeviceMask(1)
-			);
-			if (res == vk::Result::eSuboptimalKHR) {
-				need_recreate_surface = true;
-			}
-			else if (res != vk::Result::eSuccess) {
-				throw std::runtime_error{ "acquire next image != success" };
-			}
-			parent::free_acquire_next_image_semaphore(index);
-
-			vk::Fence acquire_next_image_semaphore_fence = parent::get_acquire_next_image_semaphore_fence(index);
-			{
-				vk::Result res = device.waitForFences(acquire_next_image_semaphore_fence, true, UINT64_MAX);
-				if (res != vk::Result::eSuccess) {
-					throw std::runtime_error{ "failed to wait fences" };
-				}
-			}
-			device.resetFences(acquire_next_image_semaphore_fence);
-
-			std::vector<void*> upload_memory_ptrs = parent::get_uniform_upload_buffer_memory_ptr_vector();
-			void* upload_ptr = upload_memory_ptrs[index];
-			memcpy(upload_ptr, &m_frame_index, sizeof(m_frame_index));
-			m_frame_index++;
-			std::vector<vk::DeviceMemory> upload_memory_vector = parent::get_uniform_upload_buffer_memory_vector();
-			vk::DeviceMemory upload_memory = upload_memory_vector[index];
-			device.flushMappedMemoryRanges(
-				vk::MappedMemoryRange{}
-				.setMemory(upload_memory)
-				.setOffset(0)
-				.setSize(vk::WholeSize)
-			);
-
-			vk::Semaphore draw_image_semaphore = parent::get_draw_image_semaphore(index);
-			vk::CommandBuffer buffer = parent::get_swapchain_command_buffer(index);
-			vk::PipelineStageFlags wait_stage_mask{ vk::PipelineStageFlagBits::eTopOfPipe };
-			queue.submit(
-				vk::SubmitInfo{}
-				.setCommandBuffers(buffer)
-				.setWaitSemaphores(
-					acquire_image_semaphore
-				)
-				.setWaitDstStageMask(wait_stage_mask)
-				.setSignalSemaphores(
-					draw_image_semaphore
-				),
-				acquire_next_image_semaphore_fence
-			);
-			try {
-				auto res = queue.presentKHR(
-					vk::PresentInfoKHR{}
-					.setImageIndices(index)
-					.setSwapchains(swapchain)
-					.setWaitSemaphores(draw_image_semaphore)
-				);
-				if (res == vk::Result::eSuboptimalKHR) {
-					need_recreate_surface = true;
-				}
-				else if (res != vk::Result::eSuccess) {
-					throw std::runtime_error{ "present return != success" };
-				}
-			}
-			catch (vk::OutOfDateKHRError e) {
-				need_recreate_surface = true;
-			}
-			if (need_recreate_surface) {
-				queue.waitIdle();
-				parent::recreate_surface();
-			}
-		}
-		~add_dynamic_draw() {
-			vk::Device device = parent::get_device();
-			vk::Queue queue = parent::get_queue();
-			queue.waitIdle();
-		}
-	private:
-		uint64_t m_frame_index=0;
-	};
+	
 	template<class T>
 	class add_draw : public T {
 	public:
@@ -1533,6 +1506,28 @@ namespace vulkan_hpp_helper {
 		}
 	};
 	template<class T>
+	class add_depth_attachment : public T {
+	public:
+		using parent = T;
+		auto get_attachments() {
+			auto attachments = parent::get_attachments();
+			vk::Format format = parent::get_depth_image_format();
+			vk::ImageLayout initial_layout = vk::ImageLayout::eUndefined;
+			vk::ImageLayout final_layout = vk::ImageLayout::eGeneral;
+			attachments.emplace_back(
+				vk::AttachmentDescription{}
+				.setInitialLayout(initial_layout)
+				.setFinalLayout(final_layout)
+				.setFormat(format)
+				.setLoadOp(vk::AttachmentLoadOp::eClear)
+				.setStoreOp(vk::AttachmentStoreOp::eDontCare)
+				.setStencilLoadOp(vk::AttachmentLoadOp::eDontCare)
+				.setStencilStoreOp(vk::AttachmentStoreOp::eDontCare)
+			);
+			return attachments;
+		}
+	};
+	template<class T>
 	class add_attachment : public T {
 	public:
 		using parent = T;
@@ -1546,7 +1541,7 @@ namespace vulkan_hpp_helper {
 				.setInitialLayout(initial_layout)
 				.setFinalLayout(final_layout)
 				.setFormat(format)
-				.setLoadOp(vk::AttachmentLoadOp::eDontCare)
+				.setLoadOp(vk::AttachmentLoadOp::eClear)
 				.setStoreOp(vk::AttachmentStoreOp::eStore)
 				.setStencilLoadOp(vk::AttachmentLoadOp::eDontCare)
 				.setStencilStoreOp(vk::AttachmentStoreOp::eDontCare)
