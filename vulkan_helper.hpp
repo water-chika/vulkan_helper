@@ -1052,6 +1052,14 @@ namespace vulkan_hpp_helper {
 		}
 	};
 	template<class T>
+	class rename_buffer_vector_to_vertex_buffer_vector : public T {
+	public:
+		using parent = T;
+		auto get_vertex_buffer_vector() {
+			return parent::get_buffer_vector();
+		}
+	};
+	template<class T>
 	class rename_buffer_vector_to_uniform_buffer_vector : public T {
 	public:
 		using parent = T;
@@ -1068,11 +1076,27 @@ namespace vulkan_hpp_helper {
 		}
 	};
 	template<class T>
+	class rename_buffer_memory_vector_to_vertex_buffer_memory_vector : public T {
+	public:
+		using parent = T;
+		auto get_vertex_buffer_memory_vector() {
+			return parent::get_buffer_memory_vector();
+		}
+	};
+	template<class T>
 	class rename_buffer_memory_vector_to_uniform_upload_buffer_memory_vector : public T {
 	public:
 		using parent = T;
 		auto get_uniform_upload_buffer_memory_vector() {
 			return parent::get_buffer_memory_vector();
+		}
+	};
+	template<class T>
+	class rename_buffer_memory_ptr_vector_to_vertex_buffer_memory_ptr_vector : public T {
+	public:
+		using parent = T;
+		auto get_vertex_buffer_memory_ptr_vector() {
+			return parent::get_buffer_memory_ptr_vector();
 		}
 	};
 	template<class T>
