@@ -7,6 +7,7 @@
 #include <concepts>
 #include <map>
 #include <numeric>
+#include <string>
 
 namespace vulkan_hpp_helper {
     namespace concept_helper {
@@ -53,7 +54,7 @@ namespace vulkan_hpp_helper {
     class add_empty_extensions : public T {
     public:
         auto get_extensions() {
-            return std::vector<const char*>{};
+            return std::vector<std::string>{};
         }
     };
     template<class T>
@@ -2400,7 +2401,7 @@ namespace vulkan_helper {
     class add_empty_extensions : public T {
     public:
         auto get_extensions() {
-            return std::vector<const char*>{};
+            return std::vector<std::string>{};
         }
     };
 
