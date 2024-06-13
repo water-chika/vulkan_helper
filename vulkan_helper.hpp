@@ -66,6 +66,7 @@ namespace vulkan_hpp_helper {
             return ext;
         }
     };
+#if WIN32
     template<class T>
     class add_win32_surface_extension : public T {
     public:
@@ -75,6 +76,7 @@ namespace vulkan_hpp_helper {
             return ext;
         }
     };
+#endif
     template<class T>
     class add_swapchain_extension : public T {
     public:
@@ -1385,7 +1387,8 @@ namespace vulkan_hpp_helper {
 				});
 
 			m_semaphore_indices.resize(swapchain_image_count);
-			std::ranges::iota(m_semaphore_indices, 0);
+			//std::ranges::iota(m_semaphore_indices, 0);
+            std::iota(m_semaphore_indices.begin(), m_semaphore_indices.end(), 0);
 			m_free_semaphore_index = swapchain_image_count;
 		}
 		~add_acquire_next_image_semaphores() {
@@ -2002,6 +2005,7 @@ namespace vulkan_hpp_helper {
 			return parent::get_file_size();
 		}
 	};
+#if WIN32
 	template<class T>
 	class map_file_mapping : public T {
 	public:
@@ -2079,6 +2083,7 @@ namespace vulkan_hpp_helper {
 	private:
 		HANDLE m_file;
 	};
+#endif
 	template<class T>
 	class add_vertex_shader_path : public T {
 	public:
