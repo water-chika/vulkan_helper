@@ -38,7 +38,13 @@ namespace vulkan_hpp_helper {
         add_instance() {
             auto app_info = vk::ApplicationInfo{}.setApiVersion(vk::ApiVersion13);
             auto exts = parent::get_extensions();
-            auto create_info = vk::InstanceCreateInfo{}.setPApplicationInfo(&app_info).setPEnabledExtensionNames(exts);
+            std::vector<const char*> ext_ptrs(exts.size());
+            std::ranges::transform(exts, ext_ptrs.begin(),
+                    [](auto& str) {return str.c_str();});
+            auto create_info = 
+                vk::InstanceCreateInfo{}
+                .setPApplicationInfo(&app_info)
+                .setPEnabledExtensionNames(ext_ptrs);
             m_instance = vk::createInstance(create_info);
         }
         ~add_instance() {
@@ -158,10 +164,13 @@ namespace vulkan_hpp_helper {
                 .setQueueFamilyIndex(queue_family_index)
             };
             auto exts = parent::get_extensions();
+            std::vector<const char*> ext_ptrs(exts.size());
+            std::ranges::transform(exts, ext_ptrs.begin(),
+                    [](auto& str) {return str.c_str();});
             m_device = physical_device.createDevice(
                 vk::DeviceCreateInfo{}
                 .setQueueCreateInfos(queue_create_infos)
-                .setPEnabledExtensionNames(exts)
+                .setPEnabledExtensionNames(ext_ptrs)
             );
         }
         ~add_device() {
@@ -1660,6 +1669,22 @@ namespace vulkan_hpp_helper {
         std::vector<vk::Rect2D> m_scissors;
     };
     template<class T>
+    class add_scissor_equal_swapchain_extent: public T {
+    public:
+        using parent = T;
+        auto get_scissors() {
+            auto scissors = parent::get_scissors();
+            auto extent = parent::get_swapchain_image_extent();
+
+            scissors.emplace_back(
+                vk::Rect2D{}
+                .setOffset({})
+                .setExtent(extent)
+            );
+            return scissors;
+        }
+    };
+    template<class T>
     class add_scissor_equal_surface_rect : public T {
     public:
         using parent = T;
@@ -2084,6 +2109,67 @@ namespace vulkan_hpp_helper {
         HANDLE m_file;
     };
 #endif
+#if linux
+    template<class T>
+    class map_file_mapping : public T {
+    public:
+        using parent = T;
+        map_file_mapping() {
+            int fd = parent::get_file_descriptor();
+            auto size = parent::get_file_size();
+            m_memory = mmap(NULL, size, PROT_READ, MAP_PRIVATE, fd, 0);
+            if (m_memory == MAP_FAILED) {
+                throw std::runtime_error{ "failed to map view of file" };
+            }
+        }
+        ~map_file_mapping() {
+            auto size = parent::get_file_size();
+            munmap(m_memory, size);
+        }
+        auto get_mapped_pointer() {
+            return m_memory;
+        }
+    private:
+        void* m_memory;
+    };
+    template<class T>
+    class cache_file_size : public T {
+    public:
+        using parent = T;
+        cache_file_size() {
+            auto fd = parent::get_file_descriptor();
+            m_size = lseek(fd, 0, SEEK_END);
+        }
+        auto get_file_size() {
+            return m_size;
+        }
+    private:
+        uint32_t m_size;
+    };
+    template<class T>
+    class add_file_mapping : public T {
+    };
+    template<class T>
+    class add_file : public T {
+    public:
+        using parent = T;
+        add_file() {
+            auto path = parent::get_file_path();
+            m_file_descriptor = open(path.c_str(), O_RDONLY);
+            if (m_file_descriptor == -1) {
+                throw std::runtime_error{ "failed to create file" };
+            }
+        }
+        ~add_file() {
+            close(m_file_descriptor);
+        }
+        auto get_file_descriptor() {
+            return m_file_descriptor;
+        }
+    private:
+        int m_file_descriptor;
+    };
+#endif
     template<class T>
     class add_vertex_shader_path : public T {
     public:
@@ -2384,8 +2470,11 @@ namespace vulkan_helper {
             create_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
             create_info.pApplicationInfo = &application_info;
             auto exts = parent::get_extensions();
-            create_info.enabledExtensionCount = exts.size();
-            create_info.ppEnabledExtensionNames = exts.data();
+            std::vector<const char*> ext_ptrs(exts.size());
+            std::ranges::transform(exts, ext_ptrs.begin(),
+                    [](auto& str) {return str.c_str();});
+            create_info.enabledExtensionCount = ext_ptrs.size();
+            create_info.ppEnabledExtensionNames = ext_ptrs.data();
             auto res = vkCreateInstance(&create_info, NULL, &m_instance);
             if (res != VK_SUCCESS) {
                 throw std::runtime_error("failed to create instance");
