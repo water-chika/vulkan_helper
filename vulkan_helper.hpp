@@ -1273,8 +1273,8 @@ public:
   auto get_attachments() {
     auto attachments = parent::get_attachments();
     vk::Format format = parent::get_depth_image_format();
-    vk::ImageLayout initial_layout = vk::ImageLayout::eUndefined;
-    vk::ImageLayout final_layout = vk::ImageLayout::eGeneral;
+    vk::ImageLayout initial_layout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
+    vk::ImageLayout final_layout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
     attachments.emplace_back(
         vk::AttachmentDescription{}
             .setInitialLayout(initial_layout)
