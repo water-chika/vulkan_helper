@@ -208,6 +208,12 @@ public:
   using parent = T;
   add_swapchain() { create_swapchain(); }
   ~add_swapchain() { destroy_swapchain(); }
+  void create() {
+      create_swapchain();
+  }
+  void destroy() {
+      destroy_swapchain();
+  }
   void create_swapchain() {
     vk::Device device = parent::get_device();
     vk::SurfaceKHR surface = parent::get_surface();
@@ -290,6 +296,12 @@ public:
   using parent = T;
   add_swapchain_images_views() { create_swapchain_images_views(); }
   ~add_swapchain_images_views() { destroy_swapchain_images_views(); }
+  void create() {
+      create_swapchain_images_views();
+  }
+  void destroy() {
+      destroy_swapchain_images_views();
+  }
   void create_swapchain_images_views() {
     vk::Device device = parent::get_device();
     auto images = parent::get_swapchain_images();
@@ -332,6 +344,11 @@ template <class T> class add_swapchain_images : public T {
 public:
   using parent = T;
   add_swapchain_images() { flush_swapchain_images(); }
+  void create() {
+      flush_swapchain_images();
+  }
+  void destroy() {
+  }
   void flush_swapchain_images() {
     vk::Device device = parent::get_device();
     vk::SwapchainKHR swapchain = parent::get_swapchain();
@@ -412,6 +429,12 @@ public:
   using parent = T;
   add_images() { create_images(); }
   ~add_images() { destroy_images(); }
+  void create() {
+      create_images();
+  }
+  void destroy() {
+      destroy_images();
+  }
   void create_images() {
     vk::Device device = parent::get_device();
     vk::Extent3D extent = parent::get_image_extent();
@@ -604,6 +627,12 @@ public:
   using parent = T;
   add_images_memories() { create_images_memories(); }
   ~add_images_memories() { destroy_images_memories(); }
+  void create() {
+      create_images_memories();
+  }
+  void destroy() {
+      destroy_images_memories();
+  }
   void create_images_memories() {
     vk::Device device = parent::get_device();
     auto images = parent::get_images();
@@ -791,6 +820,12 @@ public:
   using parent = T;
   add_framebuffers() { create_framebuffers(); }
   ~add_framebuffers() { destroy_framebuffers(); }
+  void create() {
+      create_framebuffers();
+  }
+  void destroy() {
+      destroy_framebuffers();
+  }
   void create_framebuffers() {
     vk::Device device = parent::get_device();
     vk::RenderPass render_pass = parent::get_render_pass();
@@ -1204,6 +1239,12 @@ public:
   add_graphics_pipeline() { create_pipeline(); }
   ~add_graphics_pipeline() { destroy_pipeline(); }
   void create_pipeline() {
+      create();
+  }
+  void destroy_pipeline() {
+      destroy();
+  }
+  void create() {
     vk::Device device = parent::get_device();
     vk::PipelineLayout pipeline_layout = parent::get_pipeline_layout();
     vk::PipelineColorBlendStateCreateInfo color_blend_state =
@@ -1250,7 +1291,7 @@ public:
     }
     m_pipeline = pipeline;
   }
-  void destroy_pipeline() {
+  void destroy() {
     vk::Device device = parent::get_device();
     device.destroyPipeline(m_pipeline);
   }
@@ -1416,6 +1457,11 @@ template <class T> class cache_surface_capabilities : public T {
 public:
   using parent = T;
   cache_surface_capabilities() { flush_surface_capabilities_cache(); }
+  void create() {
+      flush_surface_capabilities_cache();
+  }
+  void destroy() {
+  }
   void flush_surface_capabilities_cache() {
     vk::PhysicalDevice physical_device = parent::get_physical_device();
     vk::SurfaceKHR surface = parent::get_surface();
