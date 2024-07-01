@@ -8,6 +8,7 @@
 #include <map>
 #include <numeric>
 #include <string>
+#include <cassert>
 
 namespace vulkan_hpp_helper {
 namespace concept_helper {
@@ -215,14 +216,23 @@ public:
       destroy_swapchain();
   }
   void create_swapchain() {
+    vk::PhysicalDevice physical_device = parent::get_physical_device();
     vk::Device device = parent::get_device();
     vk::SurfaceKHR surface = parent::get_surface();
     vk::Format format = parent::get_swapchain_image_format();
     vk::Extent2D swapchain_image_extent = parent::get_swapchain_image_extent();
 
     vk::SurfaceCapabilitiesKHR cap = parent::get_surface_capabilities();
+    auto present_modes = physical_device.getSurfacePresentModesKHR(surface);
+    if (present_modes.size() <= 0) {
+        throw std::runtime_error{"this surface does not support any present modes"};
+    }
+    assert(present_modes.size() > 0);
+    const auto prefered_present_mode = vk::PresentModeKHR::eMailbox;
+    auto present_mode = std::ranges::contains(present_modes, prefered_present_mode) ? prefered_present_mode : present_modes[0];
     m_swapchain = device.createSwapchainKHR(
         vk::SwapchainCreateInfoKHR{}
+            .setPresentMode(present_mode)
             .setMinImageCount(cap.minImageCount)
             .setImageExtent(swapchain_image_extent)
             .setImageFormat(format)
