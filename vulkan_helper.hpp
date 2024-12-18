@@ -177,9 +177,24 @@ public:
   add_swapchain_image_format() {
     vk::PhysicalDevice physical_device = parent::get_physical_device();
     vk::SurfaceKHR surface = parent::get_surface();
-    std::vector<vk::SurfaceFormatKHR> formats =
+    std::vector<vk::SurfaceFormatKHR> surface_formats =
         physical_device.getSurfaceFormatsKHR(surface);
-    m_format = vk::Format::eR8G8B8A8Unorm;
+    auto formats = std::vector<typeof(surface_formats[0].format)>(surface_formats.size());
+    std::ranges::transform(surface_formats, formats.begin(),
+        [](auto surface_format) { return surface_format.format; });
+    m_format = formats[0];
+
+    auto prefered_formats = std::vector{
+        vk::Format::eR8G8B8A8Unorm,
+        vk::Format::eB8G8R8A8Unorm
+    };
+    auto available_prefered_formats = std::vector<vk::Format>(prefered_formats.size());
+    std::ranges::sort(formats);
+    std::ranges::sort(prefered_formats);
+    std::ranges::set_intersection(formats, prefered_formats, available_prefered_formats.begin());
+    if (!available_prefered_formats.empty()) {
+        m_format = available_prefered_formats[0];
+    }
   }
   auto get_swapchain_image_format() { return m_format; }
 
@@ -805,6 +820,7 @@ public:
   clear_color_value_type get_format_clear_color_value_type(vk::Format f) {
     std::map<vk::Format, clear_color_value_type> types{
         {vk::Format::eR8G8B8A8Unorm, clear_color_value_type::eFloat32},
+        {vk::Format::eB8G8R8A8Unorm, clear_color_value_type::eFloat32},
         {vk::Format::eR32G32B32A32Sfloat, clear_color_value_type::eFloat32},
         {vk::Format::eR8G8B8A8Srgb, clear_color_value_type::eUint32},
         {vk::Format::eR32G32B32A32Uint, clear_color_value_type::eUint32},
