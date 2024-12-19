@@ -7,7 +7,8 @@ find_package(Vulkan REQUIRED)
 add_library(vulkan_helper
     vulkan_helper.cpp
     vulkan_helper.hpp
-    spirv_helper.hpp)
+    spirv_helper.hpp
+    platform.hpp)
 target_include_directories(vulkan_helper PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(vulkan_helper PUBLIC Vulkan::Vulkan)
 set_target_properties(vulkan_helper PROPERTIES CXX_STANDARD 23)
