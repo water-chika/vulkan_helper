@@ -9,16 +9,18 @@
 
 namespace vulkan_hpp_helper {
 
-#if defined(WIN32)
 template <class T> class add_win32_surface_extension : public T {
 public:
   auto get_extensions() {
+#ifdef WIN32
     auto ext = T::get_extensions();
     ext.push_back(vk::KHRWin32SurfaceExtensionName);
     return ext;
+#else
+    throw std::runtime_error{"Win32 surface is not supported"};
+#endif
   }
 };
-#endif
 
 #if defined(WIN32)
 template <class T> class map_file_mapping : public T {
@@ -86,6 +88,23 @@ private:
   HANDLE m_file;
 };
 #endif
+
+template <class T> class add_wayland_surface_extension : public T {
+public:
+  auto get_extensions()
+#ifdef VK_USE_PLATFORM_WAYLAND_KHR
+  {
+    auto ext = T::get_extensions();
+    ext.push_back(vk::KHRWaylandSurfaceExtensionName);
+    return ext;
+  }
+#else
+  {
+    throw std::runtime_error{"wayland surface is not supported"};
+  }
+#endif
+};
+
 #if linux
 template <class T> class map_file_mapping : public T {
 public:
@@ -137,5 +156,4 @@ private:
   int m_file_descriptor;
 };
 #endif
-
 }
