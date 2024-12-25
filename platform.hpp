@@ -1,6 +1,9 @@
 #pragma once
 
-
+#if defined(WIN32)
+#define NOMINMAX
+#include <Windows.h>
+#endif
 #include <vulkan/vulkan.hpp>
 
 
@@ -70,7 +73,7 @@ public:
   using parent = T;
   add_file() {
     auto path = parent::get_file_path();
-    m_file = CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL,
+    m_file = CreateFile(path.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL,
                          OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     if (m_file == INVALID_HANDLE_VALUE) {
       throw std::runtime_error{"failed to create file"};
