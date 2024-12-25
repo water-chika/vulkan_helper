@@ -96,7 +96,7 @@ public:
   using parent = Device;
   add_fence() : Device{} {
     vk::Device device = parent::get_device();
-    device.createFence(vk::FenceCreateInfo{});
+    m_fence = device.createFence(vk::FenceCreateInfo{});
   }
   ~add_fence() {
     vk::Device device = parent::get_device();
