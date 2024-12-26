@@ -83,7 +83,7 @@ class add_first_physical_device : public instance {
 public:
   using parent = instance;
   add_first_physical_device() : instance{} {
-    m_physical_device = parent::get_instance().enumeratePhysicalDevices()[0];
+    m_physical_device = parent::get_instance().enumeratePhysicalDevices().at(0);
   }
   auto get_physical_device() { return m_physical_device; }
 
@@ -113,13 +113,46 @@ public:
   using parent = T;
   add_physical_device() {
     vk::Instance instance = parent::get_instance();
-    m_physical_device = instance.enumeratePhysicalDevices()[0];
+    m_physical_device = instance.enumeratePhysicalDevices()[1];
   }
   auto get_physical_device() { return m_physical_device; }
 
 private:
   vk::PhysicalDevice m_physical_device;
 };
+
+template <std::invocable<> GET_EXTENSION, class T>
+class add_physical_device_with_extension
+    : public T {
+public:
+    using parent = T;
+    add_physical_device_with_extension() {
+        auto instance = parent::get_instance();
+        auto physical_devices = instance.enumeratePhysicalDevices();
+        auto required_extension = GET_EXTENSION::operator()();
+        bool find_extension = false;
+        for (auto physical_device : physical_devices) {
+            auto extension_properties = physical_device.enumerateDeviceExtensionProperties();
+            if (std::ranges::contains(
+                        extension_properties,
+                        required_extension,
+                        [](auto prop) { return std::string{prop.extensionName}; })
+                    ) {
+                m_physical_device = physical_device;
+                find_extension = true;
+                break;
+            }
+        }
+        if (!find_extension) {
+            std::string info = std::string{"can not find required extension: "} + required_extension;
+            throw std::runtime_error{info};
+        }
+    }
+    auto get_physical_device() { return m_physical_device; }
+private:
+  vk::PhysicalDevice m_physical_device;
+};
+
 template <class T> class add_queue_family_index : public T {
 public:
   uint32_t get_queue_family_index() { return 0; }
