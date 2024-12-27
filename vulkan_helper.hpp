@@ -184,6 +184,38 @@ public:
 private:
   vk::Device m_device;
 };
+
+template <std::invocable<> GET_FEATURES, class T> class add_device_with_features : public T {
+public:
+  using parent = T;
+  add_device_with_features() {
+    vk::PhysicalDevice physical_device = parent::get_physical_device();
+    auto priorities = std::vector{1.0f};
+    uint32_t queue_family_index = parent::get_queue_family_index();
+    auto queue_create_infos =
+        std::vector{vk::DeviceQueueCreateInfo{}
+                        .setQueueCount(priorities.size())
+                        .setQueuePriorities(priorities)
+                        .setQueueFamilyIndex(queue_family_index)};
+    auto exts = parent::get_extensions();
+    std::vector<const char *> ext_ptrs(exts.size());
+    std::ranges::transform(exts, ext_ptrs.begin(),
+                           [](auto &str) { return str.c_str(); });
+    auto features = GET_FEATURES::operator()();
+    m_device = physical_device.createDevice(
+        vk::DeviceCreateInfo{}
+            .setQueueCreateInfos(queue_create_infos)
+            .setPEnabledExtensionNames(ext_ptrs)
+            .setPNext(&std::get<vk::PhysicalDeviceFeatures2>(features))
+            );
+  }
+  ~add_device_with_features() { m_device.destroy(); }
+  auto get_device() { return m_device; }
+
+private:
+  vk::Device m_device;
+};
+
 template <class T> class add_queue : public T {
 public:
   using parent = T;
