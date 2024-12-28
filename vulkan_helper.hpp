@@ -108,12 +108,32 @@ private:
   vk::Fence m_fence;
 };
 
-template <class T> class add_physical_device : public T {
+template <class T> class add_get_physical_devices_with_check_size : public T {
 public:
-  using parent = T;
+    using parent = T;
+    auto get_physical_devices() {
+        vk::Instance instance = parent::get_instance();
+        auto physical_devices = instance.enumeratePhysicalDevices();
+        if (physical_devices.size() == 0) {
+            throw std::runtime_error{"add_physical_device: no physical device exist"};
+        }
+        return physical_devices;
+    }
+};
+
+template<class T>
+concept with_get_physical_devices = requires (T t) {
+    t.get_physical_devices();
+};
+
+template <class T>
+    requires (with_get_physical_devices<add_get_physical_devices_with_check_size<T>>)
+class add_physical_device : public add_get_physical_devices_with_check_size<T> {
+public:
+  using parent = add_get_physical_devices_with_check_size<T>;
   add_physical_device() {
-    vk::Instance instance = parent::get_instance();
-    m_physical_device = instance.enumeratePhysicalDevices()[1];
+    auto physical_devices = parent::get_physical_devices();
+    m_physical_device = physical_devices[0];
   }
   auto get_physical_device() { return m_physical_device; }
 
@@ -123,12 +143,11 @@ private:
 
 template <std::invocable<> GET_EXTENSION, class T>
 class add_physical_device_with_extension
-    : public T {
+    : public add_get_physical_devices_with_check_size<T> {
 public:
-    using parent = T;
+    using parent = add_get_physical_devices_with_check_size<T>;
     add_physical_device_with_extension() {
-        auto instance = parent::get_instance();
-        auto physical_devices = instance.enumeratePhysicalDevices();
+        auto physical_devices = parent::get_physical_devices();
         auto required_extension = GET_EXTENSION::operator()();
         bool find_extension = false;
         for (auto physical_device : physical_devices) {
