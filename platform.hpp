@@ -78,7 +78,8 @@ public:
     m_file = CreateFile(path.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL,
                          OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     if (m_file == INVALID_HANDLE_VALUE) {
-      throw std::runtime_error{"failed to create file"};
+      auto info = std::string{"failed to create file: "} + path;
+      throw std::runtime_error{info};
     }
   }
   ~add_file() { CloseHandle(m_file); }
@@ -146,7 +147,8 @@ public:
     auto path = parent::get_file_path();
     m_file_descriptor = open(path.c_str(), O_RDONLY);
     if (m_file_descriptor == -1) {
-      throw std::runtime_error{"failed to create file"};
+      auto info = std::string{"failed to create file: "} + path;
+      throw std::runtime_error{info};
     }
   }
   ~add_file() { close(m_file_descriptor); }
