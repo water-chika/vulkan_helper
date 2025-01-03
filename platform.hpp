@@ -2,7 +2,7 @@
 
 #if defined(WIN32)
 #define NOMINMAX
-#include <Windows.h>
+//#include <Windows.h>
 #endif
 #include <vulkan/vulkan.hpp>
 
@@ -12,13 +12,13 @@ namespace vulkan_hpp_helper {
 template <class T> class add_win32_surface_extension : public T {
 public:
   auto get_extensions() {
-#ifdef WIN32
     auto ext = T::get_extensions();
+#ifdef WIN32
     ext.push_back(vk::KHRWin32SurfaceExtensionName);
-    return ext;
 #else
     throw std::runtime_error{"Win32 surface is not supported"};
 #endif
+    return ext;
   }
 };
 
