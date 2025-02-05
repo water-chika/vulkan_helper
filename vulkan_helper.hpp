@@ -148,15 +148,14 @@ public:
     using parent = add_get_physical_devices_with_check_size<T>;
     add_physical_device_with_extension() {
         auto physical_devices = parent::get_physical_devices();
-        auto required_extension = GET_EXTENSION::operator()();
+        auto required_extension = GET_EXTENSION{}();
         bool find_extension = false;
         for (auto physical_device : physical_devices) {
             auto extension_properties = physical_device.enumerateDeviceExtensionProperties();
-            if (extension_properties.end() != std::find(
+            if (extension_properties.end() != std::find_if(
                         extension_properties.begin(),
                         extension_properties.end(),
-                        required_extension,
-                        [](auto prop) { return std::string{prop.extensionName}; })
+                        [&required_extension](auto prop) { return required_extension == std::string{prop.extensionName.data()}; })
                     ) {
                 m_physical_device = physical_device;
                 find_extension = true;
@@ -221,7 +220,7 @@ public:
     std::vector<const char *> ext_ptrs(exts.size());
     std::ranges::transform(exts, ext_ptrs.begin(),
                            [](auto &str) { return str.c_str(); });
-    auto features = GET_FEATURES::operator()();
+    auto features = GET_FEATURES{}();
     m_device = physical_device.createDevice(
         vk::DeviceCreateInfo{}
             .setQueueCreateInfos(queue_create_infos)
@@ -257,7 +256,7 @@ public:
     vk::SurfaceKHR surface = parent::get_surface();
     std::vector<vk::SurfaceFormatKHR> surface_formats =
         physical_device.getSurfaceFormatsKHR(surface);
-    auto formats = std::vector<typeof(surface_formats[0].format)>(surface_formats.size());
+    auto formats = std::vector<decltype(surface_formats[0].format)>(surface_formats.size());
     std::ranges::transform(surface_formats, formats.begin(),
         [](auto surface_format) { return surface_format.format; });
     m_format = formats[0];
