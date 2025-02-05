@@ -152,8 +152,9 @@ public:
         bool find_extension = false;
         for (auto physical_device : physical_devices) {
             auto extension_properties = physical_device.enumerateDeviceExtensionProperties();
-            if (std::ranges::contains(
-                        extension_properties,
+            if (extension_properties.end() != std::find(
+                        extension_properties.begin(),
+                        extension_properties.end(),
                         required_extension,
                         [](auto prop) { return std::string{prop.extensionName}; })
                     ) {
@@ -321,7 +322,7 @@ public:
     }
     assert(present_modes.size() > 0);
     const auto prefered_present_mode = vk::PresentModeKHR::eMailbox;
-    auto present_mode = std::ranges::contains(present_modes, prefered_present_mode) ? prefered_present_mode : present_modes[0];
+    auto present_mode = present_modes.end() != std::find(present_modes.begin(), present_modes.end(), prefered_present_mode) ? prefered_present_mode : present_modes[0];
     m_swapchain = device.createSwapchainKHR(
         vk::SwapchainCreateInfoKHR{}
             .setPresentMode(present_mode)
