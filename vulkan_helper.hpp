@@ -1478,9 +1478,13 @@ public:
 template <class T> class add_subpasses : public T {
 public:
   auto get_subpasses() {
+    static auto attachment_reference =
+        vk::AttachmentReference{}
+            .setAttachment(0)
+            .setLayout(vk::ImageLayout::eColorAttachmentOptimal);
     return vk::SubpassDescription{}.setColorAttachments(
-        vk::AttachmentReference{}.setAttachment(0).setLayout(
-            vk::ImageLayout::eColorAttachmentOptimal));
+            attachment_reference
+        );
   }
 };
 template <class T> class add_render_pass : public T {
