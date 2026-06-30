@@ -4,7 +4,10 @@
 #define NOMINMAX
 //#include <Windows.h>
 #endif
+
 #include <vulkan/vulkan.hpp>
+
+#include <vulkan_helper.hpp>
 
 
 namespace vulkan_hpp_helper {
@@ -26,7 +29,7 @@ public:
 template <class T> class map_file_mapping : public T {
 public:
   using parent = T;
-  map_file_mapping() {
+  map_file_mapping(const configure auto& conf) : parent{conf} {
     HANDLE mapping = parent::get_file_mapping();
     m_memory = MapViewOfFile(mapping, FILE_MAP_READ, 0, 0, 0);
     if (m_memory == INVALID_HANDLE_VALUE) {
@@ -42,7 +45,7 @@ private:
 template <class T> class cache_file_size : public T {
 public:
   using parent = T;
-  cache_file_size() {
+  cache_file_size(const configure auto& conf) : parent{conf}{
     HANDLE file = parent::get_file();
     m_size = GetFileSize(file, NULL);
   }
@@ -73,7 +76,7 @@ private:
 template <class T> class add_file : public T {
 public:
   using parent = T;
-  add_file() {
+  add_file(const configure auto& conf) : parent{conf}{
     auto path = parent::get_file_path();
     m_file = CreateFile(path.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL,
                          OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
@@ -110,7 +113,7 @@ public:
 template <class T> class map_file_mapping : public T {
 public:
   using parent = T;
-  map_file_mapping() {
+  map_file_mapping(const configure auto& conf) : parent{conf} {
     int fd = parent::get_file_descriptor();
     auto size = parent::get_file_size();
     m_memory = mmap(NULL, size, PROT_READ, MAP_PRIVATE, fd, 0);
@@ -130,7 +133,7 @@ private:
 template <class T> class cache_file_size : public T {
 public:
   using parent = T;
-  cache_file_size() {
+  cache_file_size(const configure auto& conf) : parent{conf}{
     auto fd = parent::get_file_descriptor();
     m_size = lseek(fd, 0, SEEK_END);
   }
@@ -143,7 +146,7 @@ template <class T> class add_file_mapping : public T {};
 template <class T> class add_file : public T {
 public:
   using parent = T;
-  add_file() {
+  add_file(const configure auto& conf) : parent{conf}{
     auto path = parent::get_file_path();
     m_file_descriptor = open(path.c_str(), O_RDONLY);
     if (m_file_descriptor == -1) {
