@@ -3,7 +3,6 @@
 #include <vulkan/vulkan.hpp>
 
 #include "spirv_helper.hpp"
-#include "platform.hpp"
 
 #include <concepts>
 #include <map>
@@ -13,6 +12,7 @@
 
 
 namespace vulkan_hpp_helper {
+
 namespace concept_helper {
 template <class Instance>
 concept instance = requires(Instance instance) {
@@ -35,12 +35,29 @@ concept device = requires(T t) {
                    { t.get_device() } -> std::convertible_to<vk::Device>;
                  };
 } // namespace concept_helper
-class empty_class {};
+
+template<typename T>
+struct is_configure_structure {
+    static constexpr bool value = false;
+};
+template<typename T>
+concept configure = is_configure_structure<T>::value;
+
+struct empty_configure{};
+template<>
+struct is_configure_structure<empty_configure> {
+    static constexpr bool value = true;
+};
+
+class empty_class {
+public:
+    empty_class(const configure auto& conf) {}
+};
 template <concept_helper::instance_helper::get_extensions T>
 class add_instance : public T {
 public:
   using parent = T;
-  add_instance() {
+  add_instance(const configure auto& conf) : parent{conf} {
     auto app_info = vk::ApplicationInfo{}.setApiVersion(vk::ApiVersion13);
     auto exts = parent::get_extensions();
     std::vector<const char *> ext_ptrs(exts.size());
@@ -72,6 +89,8 @@ public:
 
 template <class T> class add_swapchain_extension : public T {
 public:
+  using parent = T;
+  add_swapchain_extension(const configure auto& conf) : parent{conf} {}
   auto get_extensions() {
     auto ext = T::get_extensions();
     ext.push_back(vk::KHRSwapchainExtensionName);
@@ -131,7 +150,7 @@ template <class T>
 class add_physical_device : public add_get_physical_devices_with_check_size<T> {
 public:
   using parent = add_get_physical_devices_with_check_size<T>;
-  add_physical_device() {
+  add_physical_device(const configure auto& conf) : parent{conf} {
     auto physical_devices = parent::get_physical_devices();
     m_physical_device = physical_devices[0];
   }
@@ -146,7 +165,7 @@ class add_physical_device_with_extension
     : public add_get_physical_devices_with_check_size<T> {
 public:
     using parent = add_get_physical_devices_with_check_size<T>;
-    add_physical_device_with_extension() {
+    add_physical_device_with_extension(const configure auto& conf) : parent{conf} {
         auto physical_devices = parent::get_physical_devices();
         auto required_extension = GET_EXTENSION{}();
         bool find_extension = false;
@@ -179,7 +198,7 @@ public:
 template <class T> class add_device : public T {
 public:
   using parent = T;
-  add_device() {
+  add_device(const configure auto& conf) : parent{conf} {
     vk::PhysicalDevice physical_device = parent::get_physical_device();
     auto priorities = std::vector{1.0f};
     uint32_t queue_family_index = parent::get_queue_family_index();
@@ -207,7 +226,7 @@ private:
 template <std::invocable<> GET_FEATURES, class T> class add_device_with_features : public T {
 public:
   using parent = T;
-  add_device_with_features() {
+  add_device_with_features(const configure auto& conf) : parent{conf} {
     vk::PhysicalDevice physical_device = parent::get_physical_device();
     auto priorities = std::vector{1.0f};
     uint32_t queue_family_index = parent::get_queue_family_index();
@@ -238,7 +257,7 @@ private:
 template <class T> class add_queue : public T {
 public:
   using parent = T;
-  add_queue() {
+  add_queue(const configure auto& conf) : parent{conf} {
     vk::Device device = parent::get_device();
     uint32_t queue_family_index = parent::get_queue_family_index();
     m_queue = device.getQueue(queue_family_index, 0);
@@ -251,7 +270,7 @@ private:
 template <class T> class add_swapchain_image_format : public T {
 public:
   using parent = T;
-  add_swapchain_image_format() {
+  add_swapchain_image_format(const configure auto& conf) : parent{conf} {
     vk::PhysicalDevice physical_device = parent::get_physical_device();
     vk::SurfaceKHR surface = parent::get_surface();
     std::vector<vk::SurfaceFormatKHR> surface_formats =
@@ -299,7 +318,9 @@ public:
 template <class T> class add_swapchain : public T {
 public:
   using parent = T;
-  add_swapchain() { create_swapchain(); }
+  add_swapchain(const configure auto& conf) : parent{conf} {
+      create_swapchain();
+  }
   ~add_swapchain() { destroy_swapchain(); }
   void create() {
       create_swapchain();
@@ -396,7 +417,9 @@ public:
 template <class T> class add_swapchain_images_views : public T {
 public:
   using parent = T;
-  add_swapchain_images_views() { create_swapchain_images_views(); }
+  add_swapchain_images_views(const configure auto& conf) : parent{conf} {
+      create_swapchain_images_views();
+  }
   ~add_swapchain_images_views() { destroy_swapchain_images_views(); }
   void create() {
       create_swapchain_images_views();
@@ -445,7 +468,9 @@ public:
 template <class T> class add_swapchain_images : public T {
 public:
   using parent = T;
-  add_swapchain_images() { flush_swapchain_images(); }
+  add_swapchain_images(const configure auto& conf) : parent{conf} {
+      flush_swapchain_images();
+  }
   void create() {
       flush_swapchain_images();
   }
@@ -529,7 +554,9 @@ public:
 template <class T> class add_images : public T {
 public:
   using parent = T;
-  add_images() { create_images(); }
+  add_images(const configure auto& conf) : parent{conf} {
+      create_images();
+  }
   ~add_images() { destroy_images(); }
   void create() {
       create_images();
@@ -630,7 +657,7 @@ public:
 template <class T> class map_buffer_memory_vector : public T {
 public:
   using parent = T;
-  map_buffer_memory_vector() {
+  map_buffer_memory_vector(const configure auto& conf) : parent{conf} {
     vk::Device device = parent::get_device();
     std::vector<vk::DeviceMemory> memory_vector =
         parent::get_buffer_memory_vector();
@@ -655,7 +682,7 @@ private:
 template <class T> class add_buffer_memory_vector : public T {
 public:
   using parent = T;
-  add_buffer_memory_vector() {
+  add_buffer_memory_vector(const configure auto& conf) : parent{conf}{
     vk::Device device = parent::get_device();
     std::vector<vk::Buffer> buffers = parent::get_vector();
     vk::MemoryPropertyFlags memory_properties =
@@ -690,7 +717,7 @@ private:
 template <class T> class add_buffer_memory : public T {
 public:
   using parent = T;
-  add_buffer_memory() {
+  add_buffer_memory(const configure auto& conf) : parent{conf} {
     vk::Device device = parent::get_device();
     vk::Buffer buffer = parent::get_buffer();
     vk::MemoryPropertyFlags memory_properties =
@@ -727,7 +754,9 @@ public:
 template <class T> class add_images_memories : public T {
 public:
   using parent = T;
-  add_images_memories() { create_images_memories(); }
+  add_images_memories(const configure auto& conf) : parent{conf} {
+      create_images_memories();
+  }
   ~add_images_memories() { destroy_images_memories(); }
   void create() {
       create_images_memories();
@@ -783,7 +812,7 @@ public:
 template <class T> class cache_physical_device_memory_properties : public T {
 public:
   using parent = T;
-  cache_physical_device_memory_properties() {
+  cache_physical_device_memory_properties(const configure auto& conf) : parent{conf} {
     vk::PhysicalDevice physical_device = parent::get_physical_device();
     m_properties = physical_device.getMemoryProperties();
   }
@@ -817,7 +846,7 @@ public:
 template <class T> class add_command_pool : public T {
 public:
   using parent = T;
-  add_command_pool() {
+  add_command_pool(const configure auto& conf) : parent{conf} {
     vk::Device device = parent::get_device();
     uint32_t queue_family_index = parent::get_queue_family_index();
     m_pool = device.createCommandPool(
@@ -865,7 +894,7 @@ public:
 template <class T> class add_swapchain_command_buffers : public T {
 public:
   using parent = T;
-  add_swapchain_command_buffers() { create(); }
+  add_swapchain_command_buffers(const configure auto& conf) : parent{conf} { create(); }
   ~add_swapchain_command_buffers() { destroy(); }
   void create() {
     vk::Device device = parent::get_device();
@@ -979,7 +1008,7 @@ public:
 template <class T> class copy_buffer_data : public T {
 public:
   using parent = T;
-  copy_buffer_data() {
+  copy_buffer_data(const configure auto& conf) : parent{conf} {
     vk::Device device = parent::get_device();
     vk::DeviceMemory memory = parent::get_buffer_memory();
     auto data = parent::get_buffer_data();
@@ -1107,7 +1136,7 @@ template <class T>
 class add_buffer_as_member : public add_buffer_create_destroy<T> {
 public:
   using parent = add_buffer_create_destroy<T>;
-  add_buffer_as_member() { m_buffer = parent::create(); }
+  add_buffer_as_member(const configure auto& conf) : parent{conf} { m_buffer = parent::create(); }
   ~add_buffer_as_member() { parent::destroy(m_buffer); }
   auto get_buffer() { return m_buffer; }
 
@@ -1117,7 +1146,7 @@ private:
 template <class T> class add_vector_for : public T {
 public:
   using parent = T;
-  add_vector_for() {
+  add_vector_for(const configure auto& conf) : parent{conf} {
     uint32_t count = parent::get_vector_size();
     m_members.resize(count);
     std::ranges::for_each(m_members,
@@ -1243,7 +1272,7 @@ private:
 template <class T> class add_draw_semaphores : public T {
 public:
   using parent = T;
-  add_draw_semaphores() {
+  add_draw_semaphores(const configure auto& conf) : parent{conf} {
     vk::Device device = parent::get_device();
     uint32_t swapchain_image_count = parent::get_swapchain_images().size();
 
@@ -1267,7 +1296,7 @@ private:
 template <class T> class add_acquire_next_image_semaphores : public T {
 public:
   using parent = T;
-  add_acquire_next_image_semaphores() {
+  add_acquire_next_image_semaphores(const configure auto& conf) : parent{conf} {
     vk::Device device = parent::get_device();
     uint32_t swapchain_image_count = parent::get_swapchain_images().size();
 
@@ -1305,7 +1334,7 @@ private:
 template <class T> class add_acquire_next_image_semaphore_fences : public T {
 public:
   using parent = T;
-  add_acquire_next_image_semaphore_fences() {
+  add_acquire_next_image_semaphore_fences(const configure auto& conf) : parent{conf} {
     vk::Device device = parent::get_device();
     uint32_t swapchain_image_count = parent::get_swapchain_images().size();
 
@@ -1339,7 +1368,7 @@ public:
 template <class T> class add_graphics_pipeline : public T {
 public:
   using parent = T;
-  add_graphics_pipeline() { create_pipeline(); }
+  add_graphics_pipeline(const configure auto& conf) : parent{conf} { create_pipeline(); }
   ~add_graphics_pipeline() { destroy_pipeline(); }
   void create_pipeline() {
       create();
@@ -1513,6 +1542,7 @@ private:
 template <class T> class add_pipeline_viewport_state : public T {
 public:
   using parent = T;
+  add_pipeline_viewport_state(const configure auto& conf) : parent{conf} {}
   auto get_pipeline_viewport_state_create_info() {
     m_viewports = parent::get_viewports();
     m_scissors = parent::get_scissors();
@@ -1563,7 +1593,9 @@ public:
 template <class T> class cache_surface_capabilities : public T {
 public:
   using parent = T;
-  cache_surface_capabilities() { flush_surface_capabilities_cache(); }
+  cache_surface_capabilities(const configure auto& conf) : parent{conf} {
+      flush_surface_capabilities_cache();
+  }
   void create() {
       flush_surface_capabilities_cache();
   }
@@ -1582,7 +1614,9 @@ private:
 template <class T> class test_physical_device_support_surface : public T {
 public:
   using parent = T;
-  test_physical_device_support_surface() { create(); }
+  test_physical_device_support_surface(const configure auto& conf) : parent{conf} {
+      create();
+  }
   void create() {
     vk::PhysicalDevice physical_device = parent::get_physical_device();
     vk::SurfaceKHR surface = parent::get_surface();
@@ -1666,6 +1700,7 @@ public:
 template <class T> class add_pipeline_vertex_input_state : public T {
 public:
   using parent = T;
+  add_pipeline_vertex_input_state(const configure auto& conf) : parent{conf} {}
   auto get_pipeline_vertex_input_state_create_info() {
     m_attribute_descriptions = parent::get_vertex_attribute_descriptions();
     m_binding_descriptions = parent::get_vertex_binding_descriptions();
@@ -1758,6 +1793,7 @@ public:
 template <class T> class add_pipeline_stage : public T {
 public:
   using parent = T;
+  add_pipeline_stage(const configure auto& conf) : parent{conf} {}
   auto get_pipeline_stage() {
     vk::ShaderModule shader_module = parent::get_shader_module();
     m_entry_name = parent::get_shader_entry_name();
@@ -1783,7 +1819,7 @@ public:
 template <class T> class add_shader_module : public T {
 public:
   using parent = T;
-  add_shader_module() {
+  add_shader_module(const configure auto& conf) : parent{conf}{
     vk::Device device = parent::get_device();
     auto code = parent::get_spirv_code();
     m_module =
@@ -1878,6 +1914,8 @@ public:
 template <class T> class add_pipeline_color_blend_state_create_info : public T {
 public:
   using parent = T;
+  add_pipeline_color_blend_state_create_info(const configure auto& conf) : parent{conf}{
+  }
   auto get_pipeline_color_blend_state_create_info() {
     m_attachments = parent::get_pipeline_color_blend_attachment_states();
     return vk::PipelineColorBlendStateCreateInfo{}.setAttachments(
@@ -1914,7 +1952,7 @@ public:
 template <class T> class add_pipeline_layout : public T {
 public:
   using parent = T;
-  add_pipeline_layout() {
+  add_pipeline_layout(const configure auto& conf) : parent{conf} {
     vk::Device device = parent::get_device();
     auto set_layouts = parent::get_descriptor_set_layouts();
 
@@ -1940,7 +1978,7 @@ public:
 template <class T> class add_descriptor_set_layout : public T {
 public:
   using parent = T;
-  add_descriptor_set_layout() {
+  add_descriptor_set_layout(const configure auto& conf) : parent{conf} {
     vk::Device device = parent::get_device();
     auto bindings = parent::get_descriptor_set_layout_bindings();
     m_layout = device.createDescriptorSetLayout(
@@ -2020,7 +2058,7 @@ template <class Device>
 concept device = requires(Device device) { device.get_vulkan_device(); };
 } // namespace concept_helper
 
-class empty_class {};
+using empty_class = vulkan_hpp_helper::empty_class;
 
 template <concept_helper::instance instance>
 class add_instance_function_wrapper : public instance {
@@ -2733,3 +2771,5 @@ private:
   void *m_storage_memory_ptr;
 };
 }; // namespace vulkan_helper
+
+#include "platform.hpp"
