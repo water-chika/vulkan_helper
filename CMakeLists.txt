@@ -10,7 +10,10 @@ add_library(vulkan_helper
     spirv_helper.hpp
     platform.hpp)
 target_include_directories(vulkan_helper PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(vulkan_helper PUBLIC Vulkan::Vulkan)
+target_link_libraries(vulkan_helper PUBLIC
+    Vulkan::Vulkan
+    cpp_helper
+)
 set_target_properties(vulkan_helper PROPERTIES CXX_STANDARD 23)
 
 add_custom_command(OUTPUT comp.spv

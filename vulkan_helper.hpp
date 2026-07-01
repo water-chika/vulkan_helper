@@ -3,6 +3,7 @@
 #include <vulkan/vulkan.hpp>
 
 #include "spirv_helper.hpp"
+#include "cpp_helper.hpp"
 
 #include <concepts>
 #include <map>
@@ -36,18 +37,8 @@ concept device = requires(T t) {
                  };
 } // namespace concept_helper
 
-template<typename T>
-struct is_configure_structure {
-    static constexpr bool value = false;
-};
-template<typename T>
-concept configure = is_configure_structure<T>::value;
-
-struct empty_configure{};
-template<>
-struct is_configure_structure<empty_configure> {
-    static constexpr bool value = true;
-};
+using cpp_helper::configure;
+using cpp_helper::empty_configure;
 
 class empty_class {
 public:
