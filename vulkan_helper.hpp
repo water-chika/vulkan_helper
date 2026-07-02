@@ -486,10 +486,22 @@ public:
     return vk::Extent3D{parent::get_swapchain_image_extent(), 1};
   }
 };
+template<vk::Extent2D Extent, typename T>
+class set_image_extent : public T {
+public:
+    using parent = T;
+    set_image_extent(const configure auto& conf) : parent{conf} {
+    }
+    auto get_image_extent() {
+        return vk::Extent3D{Extent, 1};
+    }
+};
 template <class T>
 class add_image_count_equal_swapchain_image_count : public T {
 public:
   using parent = T;
+  add_image_count_equal_swapchain_image_count(const configure auto& conf) : parent{conf} {
+  }
   auto get_image_count() { return parent::get_swapchain_images().size(); }
 };
 template <class T> class rename_image_format_to_depth_image_format : public T {
@@ -624,6 +636,31 @@ public:
 
 private:
   vk::DeviceMemory m_memory;
+};
+template <class T> class map_image_memory_vector : public T {
+public:
+  using parent = T;
+  map_image_memory_vector(const configure auto& conf) : parent{conf} {
+    vk::Device device = parent::get_device();
+    std::vector<vk::DeviceMemory> memory_vector =
+        parent::get_images_memories();
+    m_ptrs.resize(memory_vector.size());
+    std::ranges::transform(memory_vector, m_ptrs.begin(),
+                           [device](auto &memory) {
+                             return device.mapMemory(memory, 0, vk::WholeSize);
+                           });
+  }
+  ~map_image_memory_vector() {
+    vk::Device device = parent::get_device();
+    std::vector<vk::DeviceMemory> memory_vector =
+        parent::get_images_memories();
+    std::ranges::for_each(
+        memory_vector, [device](auto &memory) { device.unmapMemory(memory); });
+  }
+  auto get_image_memory_ptr_vector() { return m_ptrs; }
+
+private:
+  std::vector<void *> m_ptrs;
 };
 template <class T> class add_buffer_memory_create : public T {
 public:
