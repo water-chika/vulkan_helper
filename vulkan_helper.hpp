@@ -39,6 +39,7 @@ concept device = requires(T t) {
 
 using cpp_helper::configure;
 using cpp_helper::empty_configure;
+using cpp_helper::configurable;
 
 class empty_class {
 public:
@@ -187,7 +188,7 @@ public:
   uint32_t get_queue_family_index() { return 0; }
 };
 
-template<typename T>
+template<configurable T>
 class add_device : public T {
 public:
   using parent = T;
@@ -219,7 +220,8 @@ template<typename T>
 concept structure_chain_gettable = requires (T t, T::structure_chain chain) {
     t.set_structure_chain(chain);
 };
-template<structure_chain_gettable T>
+template<configurable T>
+    requires structure_chain_gettable<T>
 class add_device<T> : public T {
 public:
   using parent = T;
@@ -402,7 +404,7 @@ public:
     parent::create_swapchain_images_views();
   }
 };
-template <class T> class add_images_views : public T {
+template <configurable T> class add_images_views : public T {
 public:
   using parent = T;
   add_images_views() { create(); }
@@ -548,6 +550,9 @@ public:
 };
 template <vk::Format f, class T> class add_image_format : public T {
 public:
+  using parent = T;
+  add_image_format(const configure auto& conf) : parent{conf} {
+  }
   auto get_image_format() { return f; }
 };
 template <vk::ImageType ImageType, class T> class add_image_type : public T {
@@ -591,7 +596,7 @@ public:
     parent::create_images();
   }
 };
-template <class T> class add_images : public T {
+template <configurable T> class add_images : public T {
 public:
   using parent = T;
   add_images(const configure auto& conf) : parent{conf} {
@@ -865,6 +870,8 @@ template <vk::MemoryPropertyFlagBits Property, class T>
 class add_image_memory_property : public T {
 public:
   using parent = T;
+  add_image_memory_property(const configure auto& conf) : parent{conf} {
+  }
   auto get_image_memory_properties() {
     auto properties = parent::get_image_memory_properties();
     return properties | Property;
@@ -872,6 +879,9 @@ public:
 };
 template <class T> class add_empty_image_memory_properties : public T {
 public:
+  using parent = T;
+  add_empty_image_memory_properties(const configure auto& conf) : parent{conf} {
+  }
   auto get_image_memory_properties() { return vk::MemoryPropertyFlagBits{}; }
 };
 template <class T> class cache_physical_device_memory_properties : public T {
@@ -950,6 +960,8 @@ private:
 template <class T> class add_recreate_surface_for : public T {
 public:
   using parent = T;
+  add_recreate_surface_for(const configure auto& conf) : parent{conf} {
+  }
   void recreate_surface() {
     parent::destroy();
     parent::recreate_surface();
@@ -983,6 +995,9 @@ private:
 };
 template <class T> class add_get_format_clear_color_value_type : public T {
 public:
+  using parent = T;
+  add_get_format_clear_color_value_type(const configure auto& conf) : parent{conf} {
+  }
   enum class clear_color_value_type {
     eInt32,
     eUint32,
@@ -1063,6 +1078,8 @@ template <vk::MemoryPropertyFlagBits Property, class T>
 class set_buffer_memory_properties : public T {
 public:
   using parent = T;
+  set_buffer_memory_properties(const configure auto& conf) : parent{conf} {
+  }
   auto get_buffer_memory_properties() { return Property; }
 };
 template <class T> class rename_vertex_buffer_data_to_buffer_data : public T {
@@ -1090,10 +1107,15 @@ template <vk::BufferUsageFlagBits Usage, class T>
 class add_buffer_usage : public T {
 public:
   using parent = T;
+  add_buffer_usage(const configure auto& conf) : parent{conf} {
+  }
   auto get_buffer_usage() { return parent::get_buffer_usage() | Usage; }
 };
 template <class T> class empty_buffer_usage : public T {
 public:
+  using parent = T;
+  empty_buffer_usage(const configure auto& conf) : parent{conf} {
+  }
   auto get_buffer_usage() { return vk::BufferUsageFlags{}; }
 };
 template <vk::BufferUsageFlagBits Usage, class T>
