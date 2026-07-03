@@ -186,7 +186,9 @@ template <class T> class add_queue_family_index : public T {
 public:
   uint32_t get_queue_family_index() { return 0; }
 };
-template <class T> class add_device : public T {
+
+template<typename T>
+class add_device : public T {
 public:
   using parent = T;
   add_device(const configure auto& conf) : parent{conf} {
@@ -204,6 +206,41 @@ public:
                            [](auto &str) { return str.c_str(); });
     m_device = physical_device.createDevice(
         vk::DeviceCreateInfo{}
+            .setQueueCreateInfos(queue_create_infos)
+            .setPEnabledExtensionNames(ext_ptrs));
+  }
+  ~add_device() { m_device.destroy(); }
+  auto get_device() { return m_device; }
+
+private:
+  vk::Device m_device;
+};
+template<typename T>
+concept structure_chain_gettable = requires (T t, T::structure_chain chain) {
+    t.set_structure_chain(chain);
+};
+template<structure_chain_gettable T>
+class add_device<T> : public T {
+public:
+  using parent = T;
+  add_device(const configure auto& conf) : parent{conf} {
+    vk::PhysicalDevice physical_device = parent::get_physical_device();
+    auto priorities = std::vector{1.0f};
+    uint32_t queue_family_index = parent::get_queue_family_index();
+    auto queue_create_infos =
+        std::vector{vk::DeviceQueueCreateInfo{}
+                        .setQueueCount(priorities.size())
+                        .setQueuePriorities(priorities)
+                        .setQueueFamilyIndex(queue_family_index)};
+    auto exts = parent::get_extensions();
+    std::vector<const char *> ext_ptrs(exts.size());
+    std::ranges::transform(exts, ext_ptrs.begin(),
+                           [](auto &str) { return str.c_str(); });
+    auto nexts = typename parent::structure_chain{};
+    parent::set_structure_chain(nexts);
+    m_device = physical_device.createDevice(
+        vk::DeviceCreateInfo{}
+            .setPNext(&nexts)
             .setQueueCreateInfos(queue_create_infos)
             .setPEnabledExtensionNames(ext_ptrs));
   }
