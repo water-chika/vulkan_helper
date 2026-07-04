@@ -557,20 +557,31 @@ public:
 };
 template <vk::ImageType ImageType, class T> class add_image_type : public T {
 public:
+  using parent = T;
+  add_image_type(const configure auto& conf) : parent{conf} {
+  }
   auto get_image_type() { return ImageType; }
 };
 template <uint32_t ImageCount, class T> class add_image_count : public T {
 public:
+  using parent = T;
+  add_image_count(const configure auto& conf) : parent{conf} {
+  }
   auto get_image_count() { return ImageCount; }
 };
 template <class T> class add_empty_image_usages : public T {
 public:
+  using parent = T;
+  add_empty_image_usages(const configure auto& conf) : parent{conf} {
+  }
   auto get_image_usages() { return vk::ImageUsageFlags{}; }
 };
 template <vk::ImageUsageFlagBits Usage, class T>
 class add_image_usage : public T {
 public:
   using parent = T;
+  add_image_usage(const configure auto& conf) : parent{conf} {
+  }
   auto get_image_usages() {
     vk::ImageUsageFlags usages = parent::get_image_usages();
     return usages | Usage;
@@ -580,11 +591,15 @@ template <vk::SampleCountFlagBits Samples, class T>
 class set_image_samples : public T {
 public:
   using parent = T;
+  set_image_samples(const configure auto& conf) : parent{conf} {
+  }
   auto get_image_samples() { return Samples; }
 };
 template <vk::ImageTiling Tiling, class T> class set_image_tiling : public T {
 public:
   using parent = T;
+  set_image_tiling(const configure auto& conf) : parent{conf} {
+  }
   auto get_image_tiling() { return Tiling; }
 };
 template <class T> class add_recreate_surface_for_images : public T {
@@ -1121,6 +1136,9 @@ public:
 template <vk::BufferUsageFlagBits Usage, class T>
 class set_buffer_usage : public T {
 public:
+  using parent = T;
+  set_buffer_usage(const configure auto& conf) : parent{conf} {
+  }
   auto get_buffer_usage() { return Usage; }
 };
 template <class T>
@@ -1190,6 +1208,9 @@ public:
 };
 template <vk::DeviceSize Size, class T> class set_buffer_size : public T {
 public:
+  using parent = T;
+  set_buffer_size(const configure auto& conf) : parent{conf} {
+  }
   auto get_buffer_size() { return Size; }
 };
 
@@ -1197,6 +1218,8 @@ template <class T> class add_buffer_create : public T {
 public:
   using parent = T;
   using create_type = vk::Buffer;
+  add_buffer_create(const configure auto& conf) : parent{conf} {
+  }
   auto create() {
     vk::Device device = parent::get_device();
     uint32_t queue_family_index = parent::get_queue_family_index();
@@ -1211,14 +1234,19 @@ public:
 template <class T> class add_buffer_destroy : public T {
 public:
   using parent = T;
+  add_buffer_destroy(const configure auto& conf) : parent{conf} {
+  }
   auto destroy(vk::Buffer buffer) {
     vk::Device device = parent::get_device();
     device.destroyBuffer(buffer);
   }
 };
 template <class T>
-class add_buffer_create_destroy
-    : public add_buffer_destroy<add_buffer_create<T>> {};
+using add_buffer_create_destroy =
+    add_buffer_destroy<add_buffer_create<
+    T
+    >>
+;
 template <class T>
 class add_buffer_as_member : public add_buffer_create_destroy<T> {
 public:
@@ -1252,6 +1280,8 @@ template <class T>
 class add_buffer_vector : public add_vector_for<add_buffer_create_destroy<T>> {
 public:
   using parent = add_vector_for<add_buffer_create_destroy<T>>;
+  add_buffer_vector(const configure auto& conf) : parent{conf} {
+  }
   auto get_buffer_vector() { return parent::get_vector(); }
 };
 template <class T> class jump_draw_if_window_minimized : public T {
