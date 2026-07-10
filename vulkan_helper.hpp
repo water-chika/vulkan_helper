@@ -84,10 +84,43 @@ public:
   using parent = T;
   add_swapchain_extension(const configure auto& conf) : parent{conf} {}
   auto get_extensions() {
-    auto ext = T::get_extensions();
+    auto ext = parent::get_extensions();
     ext.push_back(vk::KHRSwapchainExtensionName);
     return ext;
   }
+};
+template<typename T>
+class add_video_queue_extension : public T {
+public:
+    using parent = T;
+    add_video_queue_extension(const configure auto& conf) : parent{conf} {}
+    auto get_extensions() {
+        auto ext = parent::get_extensions();
+        ext.emplace_back(vk::KHRVideoQueueExtensionName);
+        return ext;
+    }
+};
+template<typename T>
+class add_video_decode_queue_extension : public T {
+public:
+    using parent = T;
+    add_video_decode_queue_extension(const configure auto& conf) : parent{conf} {}
+    auto get_extensions() {
+        auto ext = parent::get_extensions();
+        ext.emplace_back(vk::KHRVideoDecodeQueueExtensionName);
+        return ext;
+    }
+};
+template<typename T>
+class add_video_decode_h264_extension : public T {
+public:
+    using parent = T;
+    add_video_decode_h264_extension(const configure auto& conf) : parent{conf} {}
+    auto get_extensions() {
+        auto ext = parent::get_extensions();
+        ext.emplace_back(vk::KHRVideoDecodeH264ExtensionName);
+        return ext;
+    }
 };
 template <concept_helper::instance instance>
 class add_first_physical_device : public instance {
@@ -217,8 +250,40 @@ private:
   vk::Device m_device;
 };
 template<typename T>
+concept queue_create_infos_gettable = requires (T t) {
+    t.get_queue_create_infos();
+};
+template<typename T>
 concept structure_chain_gettable = requires (T t, T::structure_chain chain) {
     t.set_structure_chain(chain);
+};
+template<configurable T>
+    requires structure_chain_gettable<T> && queue_create_infos_gettable<T>
+class add_device<T> : public T {
+public:
+  using parent = T;
+  add_device(const configure auto& conf) : parent{conf} {
+    vk::PhysicalDevice physical_device = parent::get_physical_device();
+    auto priorities = std::vector{1.0f};
+    uint32_t queue_family_index = parent::get_queue_family_index();
+    auto queue_create_infos = parent::get_queue_create_infos();
+    auto exts = parent::get_extensions();
+    std::vector<const char *> ext_ptrs(exts.size());
+    std::ranges::transform(exts, ext_ptrs.begin(),
+                           [](auto &str) { return str.c_str(); });
+    auto nexts = typename parent::structure_chain{};
+    parent::set_structure_chain(nexts);
+    m_device = physical_device.createDevice(
+        vk::DeviceCreateInfo{}
+            .setPNext(&nexts)
+            .setQueueCreateInfos(queue_create_infos)
+            .setPEnabledExtensionNames(ext_ptrs));
+  }
+  ~add_device() { m_device.destroy(); }
+  auto get_device() { return m_device; }
+
+private:
+  vk::Device m_device;
 };
 template<configurable T>
     requires structure_chain_gettable<T>
@@ -293,6 +358,20 @@ public:
     m_queue = device.getQueue(queue_family_index, 0);
   }
   auto get_queue() { return m_queue; }
+
+private:
+  vk::Queue m_queue;
+};
+template<typename T>
+class add_decode_queue : public T {
+public:
+  using parent = T;
+  add_decode_queue(const configure auto& conf) : parent{conf} {
+    vk::Device device = parent::get_device();
+    uint32_t queue_family_index = parent::get_decode_queue_family_index();
+    m_queue = device.getQueue(queue_family_index, 0);
+  }
+  auto get_decode_queue() { return m_queue; }
 
 private:
   vk::Queue m_queue;
@@ -910,6 +989,18 @@ public:
 
 private:
   vk::PhysicalDeviceMemoryProperties m_properties;
+};
+template <class T> class cache_physical_device_queue_properties : public T {
+public:
+  using parent = T;
+  cache_physical_device_queue_properties(const configure auto& conf) : parent{conf} {
+    vk::PhysicalDevice physical_device = parent::get_physical_device();
+    m_properties = physical_device.getQueueFamilyProperties();
+  }
+  auto get_physical_device_queue_family_properties() { return m_properties; }
+
+private:
+  std::vector<vk::QueueFamilyProperties> m_properties;
 };
 template <class T> class add_find_properties : public T {
 public:
