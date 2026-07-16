@@ -14,6 +14,9 @@ namespace vulkan_hpp_helper {
 
 template <class T> class add_win32_surface_extension : public T {
 public:
+  using parent = T;
+  add_win32_surface_extension(const configure auto& conf) : parent{conf}
+  {}
   auto get_extensions() {
     auto ext = T::get_extensions();
 #ifdef WIN32
@@ -57,7 +60,7 @@ private:
 template <class T> class add_file_mapping : public T {
 public:
   using parent = T;
-  add_file_mapping() {
+  add_file_mapping(const configure auto& conf) : parent{conf} {
     uint64_t maximum_size{0};
     HANDLE file = parent::get_file();
     m_mapping = CreateFileMapping(file, nullptr, PAGE_READONLY,
@@ -95,6 +98,9 @@ private:
 
 template <class T> class add_wayland_surface_extension : public T {
 public:
+  using parent = T;
+  add_wayland_surface_extension(const configure auto& conf) : parent{conf}
+  {}
   auto get_extensions()
 #ifdef VK_USE_PLATFORM_WAYLAND_KHR
   {

@@ -1378,6 +1378,8 @@ public:
 template <class T> class jump_draw_if_window_minimized : public T {
 public:
   using parent = T;
+  jump_draw_if_window_minimized(const configure auto& conf) : parent{conf}
+  {}
   void draw() {
     if (!parent::is_window_minimized()) {
       parent::draw();
