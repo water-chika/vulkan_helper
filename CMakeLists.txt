@@ -18,6 +18,7 @@ add_library(vulkan_helper
 target_include_directories(vulkan_helper PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(vulkan_helper PUBLIC
     Vulkan::Vulkan
+    Vulkan::Headers
     cpp_helper
 )
 set_target_properties(vulkan_helper PROPERTIES CXX_STANDARD 23)
